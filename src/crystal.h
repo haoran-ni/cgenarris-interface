@@ -6,6 +6,7 @@ typedef struct
     float lattice_vectors[3][3];
     float com_positions[3];
     float euler_angles[3];
+    int epitaxy_matrix[4];
     float *Xcord;
     float *Ycord;
     float *Zcord;

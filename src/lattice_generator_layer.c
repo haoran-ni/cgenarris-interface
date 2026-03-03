@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include "crystal.h"
 #include "lattice_generator_layer.h"
 #include "randomgen.h"
 #include "algebra.h"
