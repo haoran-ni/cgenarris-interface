@@ -75,7 +75,7 @@ for i, s in enumerate(sources_spglib):
 
 pygenarris_mpi = Extension(
     "_pygenarris_mpi",
-    include_dirs=["./", numpy.get_include(), mpi4py.get_include()],
+    include_dirs=[numpy.get_include(), mpi4py.get_include()],
     sources=[
         "pygenarris_mpi.i",
         "pygenarris_mpi.c",
@@ -98,9 +98,11 @@ pygenarris_mpi = Extension(
 
 setup(
     name="pygenarris_mpi",
-    version="0.1",
+    version="1.0.0",
     author="Rithwik Tom",
     description="""email:rtom@andrew.cmu.edu""",
+    maintainer="Yi Yang, Haoran Ni",
+    maintainer_email="yi.yang@andrew.cmu.edu",
     ext_modules=[pygenarris_mpi],
     py_modules=["pygenarris_mpi"],
 )
