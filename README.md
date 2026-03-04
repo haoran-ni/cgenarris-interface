@@ -19,6 +19,19 @@ Random molecular crystal &amp; layer structure generator written in C with Pytho
 - Rigid-press optimization for improved packing acceptance rates
 - Python API via SWIG with NumPy and mpi4py integration
 
+## Dependencies
+
+### C executable
+
+- MPI (e.g., OpenMPI or MPICH)
+- CMake 3.0+
+
+### Python extension
+
+- Python 3.6+
+- NumPy
+- mpi4py
+
 ## Contributors
 
 | Name | Contribution | GitHub |
