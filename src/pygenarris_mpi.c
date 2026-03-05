@@ -671,7 +671,7 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 			int i = 0; 		 //counts attempts for spg
 			//attempts for an spg.
 			stop_flag = 0;
-			for(; i < max_attempts/total_ranks; i = i + BATCH_SIZE)
+			for(; i < max_attempts; i = i + BATCH_SIZE)
 			{
 				int j = 0;
 				success_flag = 0;
@@ -807,7 +807,7 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 			}//end of attempt loop
 
 			//if max limit is reached if some rank hit the limit
-			if (i >= max_attempts/total_ranks)
+			if (i >= max_attempts)
 			{
 				do {volume = normal_dist_ab(volume_mean, volume_std);} while(volume < 0.1);
 				if (my_rank== 0)
