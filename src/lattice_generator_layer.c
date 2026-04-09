@@ -16,7 +16,24 @@
 
 //min and max angles are in radians
 
-void generate_oblique_triclinic(float lattice_vector[3][3], 
+static void fill_layer_lattice_vectors(float lv[3][3], float a[3], float b[3],
+                                        float c, float c2x, float c2y)
+{
+	lv[0][0] = a[0];
+	lv[1][1] = b[1];
+	lv[2][2] = c;
+
+	lv[0][1] = a[1];
+	lv[0][2] = a[2];
+	lv[1][2] = b[2];
+
+	lv[1][0] = b[0];
+	lv[2][0] = c2x;
+	lv[2][1] = c2y;
+}
+
+
+void generate_oblique_triclinic(float lattice_vector[3][3],
 	float target_volume, float max_angle, float min_angle,float tmp_lattice_vec_a [3],
         float tmp_lattice_vec_b [3],float tmp_lattice_vec_a_norm,float tmp_lattice_vec_b_norm,
 	float gamma)
@@ -54,17 +71,7 @@ void generate_oblique_triclinic(float lattice_vector[3][3],
 	float cx = coeff_cx * c;
 	float cy = coeff_cy * c;
 
-	lattice_vector[0][0] = tmp_lattice_vec_a[0];
-	lattice_vector[1][1] = tmp_lattice_vec_b[1];
-	lattice_vector[2][2] = cz;
-
-	lattice_vector[0][1] = tmp_lattice_vec_a[1];
-	lattice_vector[0][2] = tmp_lattice_vec_a[2];
-	lattice_vector[1][2] = tmp_lattice_vec_b[2];
-
-	lattice_vector[1][0] = tmp_lattice_vec_b[0];
-	lattice_vector[2][0] = cx;
-	lattice_vector[2][1] = cy;
+	fill_layer_lattice_vectors(lattice_vector, tmp_lattice_vec_a, tmp_lattice_vec_b, cz, cx, cy);
 
 
 	
@@ -81,17 +88,7 @@ void generate_oblique_monoclinic(float lattice_vector[3][3],
 	float c = target_volume / (tmp_lattice_vec_a_norm * tmp_lattice_vec_b_norm * sin(gamma));
 	//printf("I am in generate_oblique_monoclinic and c is %f",c);
 	
-	lattice_vector[0][0] = tmp_lattice_vec_a[0];
-	lattice_vector[1][1] = tmp_lattice_vec_b[1];
-	lattice_vector[2][2] = c;
-
-	lattice_vector[0][1] = tmp_lattice_vec_a[1];
-	lattice_vector[0][2] = tmp_lattice_vec_a[2];
-	lattice_vector[1][2] = tmp_lattice_vec_b[2];
-
-	lattice_vector[1][0] = tmp_lattice_vec_b[0];
-	lattice_vector[2][0] = 0;
-	lattice_vector[2][1] = 0;
+	fill_layer_lattice_vectors(lattice_vector, tmp_lattice_vec_a, tmp_lattice_vec_b, c, 0, 0);
 	//printf("I am at end of generate_oblique_monoclinic");
 
 
@@ -110,17 +107,7 @@ void generate_rectangle_monoclinic(float lattice_vector[3][3],
 	float cy = c * cos(alpha);
 	float cz = c * sin(alpha);
 
-	lattice_vector[0][0] = tmp_lattice_vec_a [0];
-	lattice_vector[1][1] = tmp_lattice_vec_b [1];
-	lattice_vector[2][2] = cz;
-
-	lattice_vector[0][1] = tmp_lattice_vec_a [1];
-	lattice_vector[0][2] = tmp_lattice_vec_a [2];
-	lattice_vector[1][2] = tmp_lattice_vec_b [2];
-
-	lattice_vector[1][0] = tmp_lattice_vec_b [0];
-	lattice_vector[2][0] = 0;
-	lattice_vector[2][1] = cy;
+	fill_layer_lattice_vectors(lattice_vector, tmp_lattice_vec_a, tmp_lattice_vec_b, cz, 0, cy);
 }
 
 
@@ -132,17 +119,7 @@ void generate_rectangle_orthorhombic(float lattice_vector[3][3],
 
 	float c = target_volume / (tmp_lattice_vec_a_norm * tmp_lattice_vec_b_norm);
 
-	lattice_vector[0][0] = tmp_lattice_vec_a [0];
-	lattice_vector[1][1] = tmp_lattice_vec_b [1];
-	lattice_vector[2][2] = c;
-
-	lattice_vector[0][1] = tmp_lattice_vec_a [1];
-	lattice_vector[0][2] = tmp_lattice_vec_a [2];
-	lattice_vector[1][2] = tmp_lattice_vec_b [2];
-
-	lattice_vector[1][0] = tmp_lattice_vec_b [0];
-	lattice_vector[2][0] = 0;
-	lattice_vector[2][1] = 0;
+	fill_layer_lattice_vectors(lattice_vector, tmp_lattice_vec_a, tmp_lattice_vec_b, c, 0, 0);
 }
 
 void generate_hexagonal_hexagonal(float lattice_vector[3][3], 
@@ -151,18 +128,8 @@ void generate_hexagonal_hexagonal(float lattice_vector[3][3],
 {
 	float c = target_volume / (sqrt(3)/2 * pow(tmp_lattice_vec_a_norm,2));
 	//printf("c generated is %f\n",c);
-	
-	lattice_vector[0][0] = tmp_lattice_vec_a [0];
-	lattice_vector[1][1] = tmp_lattice_vec_b [1];
-	lattice_vector[2][2] = c;
 
-	lattice_vector[0][1] = tmp_lattice_vec_a [1];
-	lattice_vector[0][2] = tmp_lattice_vec_a [2];
-	lattice_vector[1][2] = tmp_lattice_vec_b [2];
-
-	lattice_vector[1][0] = tmp_lattice_vec_b [0];
-	lattice_vector[2][0] = 0;
-	lattice_vector[2][1] = 0;
+	fill_layer_lattice_vectors(lattice_vector, tmp_lattice_vec_a, tmp_lattice_vec_b, c, 0, 0);
 }
 
 void generate_square_tetragonal(float lattice_vector[3][3], 
@@ -173,17 +140,7 @@ void generate_square_tetragonal(float lattice_vector[3][3],
 	//fflush(stdout);
 	float c = target_volume / (pow(tmp_lattice_vec_a_norm,2));
 
-	lattice_vector[0][0] = tmp_lattice_vec_a [0];
-	lattice_vector[1][1] = tmp_lattice_vec_b [1];
-	lattice_vector[2][2] = c;
-
-	lattice_vector[0][1] = tmp_lattice_vec_a [1];
-	lattice_vector[0][2] = tmp_lattice_vec_a [2];
-	lattice_vector[1][2] = tmp_lattice_vec_b [2];
-
-	lattice_vector[1][0] = tmp_lattice_vec_b [0];
-	lattice_vector[2][0] = 0;
-	lattice_vector[2][1] = 0;
+	fill_layer_lattice_vectors(lattice_vector, tmp_lattice_vec_a, tmp_lattice_vec_b, c, 0, 0);
 }
 
 
@@ -299,6 +256,56 @@ int generate_substrate_lattice_combs(int *all_substrate_combo, float lattice_vec
 }
 
 
+static int sample_2d_lattice_combo(
+	int *all_substrate_combo, int num_combo, float prim_lv[3][3],
+	float tmp_a[3], float tmp_b[3],
+	float *norm_a, float *norm_b, float *gamma, float *gamma_deg, float *new_area,
+	int *counter, float lattice_vector[3][3])
+{
+	int rand_index = genrand_int32() % num_combo;
+	int chosen_factor_1 = all_substrate_combo[rand_index * 4 + 0];
+	int chosen_factor_2 = all_substrate_combo[rand_index * 4 + 1];
+	int chosen_factor_3 = all_substrate_combo[rand_index * 4 + 2];
+	int chosen_factor_4 = all_substrate_combo[rand_index * 4 + 3];
+
+	float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
+	float new_vec[3][3];
+	float lower_lattice_vector[3][3];
+	mat3b3_mat3b3_multiply(transform_martix, prim_lv, new_vec);
+	get_lower_triangle(new_vec, lower_lattice_vector);
+
+	tmp_a[0] = lower_lattice_vector[0][0];
+	tmp_a[1] = lower_lattice_vector[0][1];
+	tmp_a[2] = lower_lattice_vector[0][2];
+	tmp_b[0] = lower_lattice_vector[1][0];
+	tmp_b[1] = lower_lattice_vector[1][1];
+	tmp_b[2] = lower_lattice_vector[1][2];
+
+	*norm_a = sqrt(pow(tmp_a[0],2)+pow(tmp_a[1],2)+pow(tmp_a[2],2));
+	*norm_b = sqrt(pow(tmp_b[0],2)+pow(tmp_b[1],2)+pow(tmp_b[2],2));
+	float dot_product = tmp_a[0]*tmp_b[0] + tmp_a[1]*tmp_b[1] + tmp_a[2]*tmp_b[2];
+	*gamma = acos(dot_product / (*norm_a * *norm_b));
+	*gamma_deg = *gamma * 180 / PI;
+
+	(*counter)++;
+	if (*counter > 10000000)
+	{
+		//printf("I am over 10000\n");
+		//fflush(stdout);
+		for (int i = 0; i < 3; i++)
+			for (int j = 0; j < 3; j++)
+				lattice_vector[i][j] = 0;
+		return 1;
+	}
+
+	float cross[3];
+	cross_vector3_vector3(cross, tmp_a, tmp_b);
+	*new_area = sqrt(pow(cross[0],2)+pow(cross[1],2)+pow(cross[2],2));
+
+	return 0;
+}
+
+
 void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3], int spg,
 	float max_angle, float min_angle, float target_volume, float lattice_vector_2d[2][3],	      int num_combo,float interface_area_mean,float interface_area_std,
 	int volume_multiplier,int SET_INTERFACE_AREA)
@@ -314,7 +321,6 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	float gamma_in_deg = 0;
 	int counter = 0;
 	float new_area = 0;
-	float lower_lattice_vector[3][3];
 	float prim_lv[3][3] = {{lattice_vector_2d[0][0],lattice_vector_2d[0][1],lattice_vector_2d[0][2] },
 						   {lattice_vector_2d[1][0],lattice_vector_2d[1][1],lattice_vector_2d[1][2] },
 						   {0.0,0.0,1.0}};
@@ -333,59 +339,18 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	{
 	  //printf("the layer group is oblique_triclinic");
 	  //fflush(stdout);
-	  do 
+	  do
 	    {
-			
-			int rand_index = genrand_int32()% num_combo;
-			int chosen_factor_1= all_substrate_combo[rand_index * 4 +0 ];
-			int chosen_factor_2= all_substrate_combo[rand_index * 4 +1 ];
-			int chosen_factor_3= all_substrate_combo[rand_index * 4 +2 ];
-			int chosen_factor_4= all_substrate_combo[rand_index * 4 +3 ];
-
-			float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
-			float new_vec[3][3];
-			mat3b3_mat3b3_multiply(transform_martix, prim_lv, new_vec);
-			get_lower_triangle(new_vec,lower_lattice_vector);
-
-			tmp_lattice_vec_a[0] = lower_lattice_vector[0][0];
-			tmp_lattice_vec_a[1] = lower_lattice_vector[0][1];
-			tmp_lattice_vec_a[2] = lower_lattice_vector[0][2];
-			tmp_lattice_vec_b[0] = lower_lattice_vector[1][0];
-			tmp_lattice_vec_b[1] = lower_lattice_vector[1][1];
-			tmp_lattice_vec_b[2] = lower_lattice_vector[1][2];
-
-
-			norm_tmp_lattice_vec_a = sqrt(pow(tmp_lattice_vec_a[0],2)+pow(tmp_lattice_vec_a[1],2)+pow(tmp_lattice_vec_a[2],2));
-			norm_tmp_lattice_vec_b = sqrt(pow(tmp_lattice_vec_b[0],2)+pow(tmp_lattice_vec_b[1],2)+pow(tmp_lattice_vec_b[2],2));
-			float dot_product = tmp_lattice_vec_a[0] * tmp_lattice_vec_b[0] + tmp_lattice_vec_a[1] * tmp_lattice_vec_b[1] 
-								+tmp_lattice_vec_a[2] * tmp_lattice_vec_b[2] ;
-			gamma = acos(dot_product/(norm_tmp_lattice_vec_a * norm_tmp_lattice_vec_b));
-			gamma_in_deg = gamma * 180/PI;
-			counter++;
-			if (counter > 10000000)
-			{
-				//printf("I am over 10000\n");
-				//fflush(stdout);
-				for (int i = 0; i < 3; i++)
-					{
-						for (int j =0; j<3; j++)
-							{
-								lattice_vector[i][j] = 0;
-							}
-					}
-
+			if (sample_2d_lattice_combo(all_substrate_combo, num_combo, prim_lv,
+					tmp_lattice_vec_a, tmp_lattice_vec_b,
+					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
+					&gamma, &gamma_in_deg, &new_area,
+					&counter, lattice_vector))
 				return;
-			}
-
-			//get area and check it if the interface mean and std is set
-			float cross[3];
-			cross_vector3_vector3(cross, tmp_lattice_vec_a,tmp_lattice_vec_b);
-			new_area = sqrt(pow(cross[0],2)+pow(cross[1],2)+pow(cross[2],2));
-
-	    }	
-	  while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length 
+	    }
+	  while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length
 	  	|| fabs(gamma_in_deg - 90) < epsilon || fabs(gamma_in_deg - 120) < epsilon ||
-	        new_area > (interface_area_mean + interface_area_std ) || 
+	        new_area > (interface_area_mean + interface_area_std ) ||
 		new_area < (interface_area_mean - interface_area_std));
 	  
 	  
@@ -399,57 +364,16 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	  //fflush(stdout);
       do
         {
-			int rand_index = genrand_int32()% num_combo;
-			int chosen_factor_1= all_substrate_combo[rand_index * 4 +0 ];
-			int chosen_factor_2= all_substrate_combo[rand_index * 4 +1 ];
-			int chosen_factor_3= all_substrate_combo[rand_index * 4 +2 ];
-			int chosen_factor_4= all_substrate_combo[rand_index * 4 +3 ];
-
-			float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
-			float new_vec[3][3];
-			mat3b3_mat3b3_multiply(transform_martix, prim_lv, new_vec);
-			get_lower_triangle(new_vec,lower_lattice_vector);
-
-			tmp_lattice_vec_a[0] = lower_lattice_vector[0][0];
-			tmp_lattice_vec_a[1] = lower_lattice_vector[0][1];
-			tmp_lattice_vec_a[2] = lower_lattice_vector[0][2];
-			tmp_lattice_vec_b[0] = lower_lattice_vector[1][0];
-			tmp_lattice_vec_b[1] = lower_lattice_vector[1][1];
-			tmp_lattice_vec_b[2] = lower_lattice_vector[1][2];
-
-			norm_tmp_lattice_vec_a = sqrt(pow(tmp_lattice_vec_a[0],2)+pow(tmp_lattice_vec_a[1],2)+pow(tmp_lattice_vec_a[2],2));
-			norm_tmp_lattice_vec_b = sqrt(pow(tmp_lattice_vec_b[0],2)+pow(tmp_lattice_vec_b[1],2)+pow(tmp_lattice_vec_b[2],2));
-			float dot_product = tmp_lattice_vec_a[0] * tmp_lattice_vec_b[0] + tmp_lattice_vec_a[1] * tmp_lattice_vec_b[1] 
-								+tmp_lattice_vec_a[2] * tmp_lattice_vec_b[2] ;
-			gamma = acos(dot_product/(norm_tmp_lattice_vec_a * norm_tmp_lattice_vec_b));
-			gamma_in_deg = gamma * 180/PI;
-			counter++;
-			if (counter > 10000000)
-			{
-				//printf("I am over 10000\n");
-				//fflush(stdout);
-				for (int i = 0; i < 3; i++)
-					{
-						for (int j =0; j<3; j++)
-							{
-								lattice_vector[i][j] = 0;
-							}
-					}
-
+			if (sample_2d_lattice_combo(all_substrate_combo, num_combo, prim_lv,
+					tmp_lattice_vec_a, tmp_lattice_vec_b,
+					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
+					&gamma, &gamma_in_deg, &new_area,
+					&counter, lattice_vector))
 				return;
-			}
-
-			//get area and check it if the interface mean and std is set
-			float cross[3];
-			cross_vector3_vector3(cross, tmp_lattice_vec_a,tmp_lattice_vec_b);
-			new_area = sqrt(pow(cross[0],2)+pow(cross[1],2)+pow(cross[2],2));
-
-		
-			
         }
       while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
-	     fabs(gamma_in_deg - 90) < epsilon || fabs(gamma_in_deg - 120) < epsilon || 
-	     new_area > (interface_area_mean + interface_area_std ) || 
+	     fabs(gamma_in_deg - 90) < epsilon || fabs(gamma_in_deg - 120) < epsilon ||
+	     new_area > (interface_area_mean + interface_area_std ) ||
 	     new_area < (interface_area_mean - interface_area_std));
 
 	  generate_oblique_monoclinic( lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
@@ -462,58 +386,17 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	  	  //fflush(stdout);
      do
         {
-			int rand_index = genrand_int32()% num_combo;
-			int chosen_factor_1= all_substrate_combo[rand_index * 4 +0 ];
-			int chosen_factor_2= all_substrate_combo[rand_index * 4 +1 ];
-			int chosen_factor_3= all_substrate_combo[rand_index * 4 +2 ];
-			int chosen_factor_4= all_substrate_combo[rand_index * 4 +3 ];
-
-			float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
-			float new_vec[3][3];
-			mat3b3_mat3b3_multiply(transform_martix, prim_lv, new_vec);
-			get_lower_triangle(new_vec,lower_lattice_vector);
-
-			tmp_lattice_vec_a[0] = lower_lattice_vector[0][0];
-			tmp_lattice_vec_a[1] = lower_lattice_vector[0][1];
-			tmp_lattice_vec_a[2] = lower_lattice_vector[0][2];
-			tmp_lattice_vec_b[0] = lower_lattice_vector[1][0];
-			tmp_lattice_vec_b[1] = lower_lattice_vector[1][1];
-			tmp_lattice_vec_b[2] = lower_lattice_vector[1][2];
-
-
-			norm_tmp_lattice_vec_a = sqrt(pow(tmp_lattice_vec_a[0],2)+pow(tmp_lattice_vec_a[1],2)+pow(tmp_lattice_vec_a[2],2));
-			norm_tmp_lattice_vec_b = sqrt(pow(tmp_lattice_vec_b[0],2)+pow(tmp_lattice_vec_b[1],2)+pow(tmp_lattice_vec_b[2],2));
-			float dot_product = tmp_lattice_vec_a[0] * tmp_lattice_vec_b[0] + tmp_lattice_vec_a[1] * tmp_lattice_vec_b[1] 
-								+tmp_lattice_vec_a[2] * tmp_lattice_vec_b[2] ;
-			gamma = acos(dot_product/(norm_tmp_lattice_vec_a * norm_tmp_lattice_vec_b));
-			gamma_in_deg = gamma * 180/PI;
-			counter++;
-			if (counter > 10000000)
-			{
-				//printf("I am over 10000\n");
-				//fflush(stdout);
-				for (int i = 0; i < 3; i++)
-					{
-						for (int j =0; j<3; j++)
-							{
-								lattice_vector[i][j] = 0;
-							}
-					}
-
+			if (sample_2d_lattice_combo(all_substrate_combo, num_combo, prim_lv,
+					tmp_lattice_vec_a, tmp_lattice_vec_b,
+					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
+					&gamma, &gamma_in_deg, &new_area,
+					&counter, lattice_vector))
 				return;
-			}
-
-			//get area and check it if the interface mean and std is set
-			float cross[3];
-			cross_vector3_vector3(cross, tmp_lattice_vec_a,tmp_lattice_vec_b);
-		    new_area = sqrt(pow(cross[0],2)+pow(cross[1],2)+pow(cross[2],2));
-
-
         }
 
-          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length || 
-		 fabs(gamma_in_deg - 90) > epsilon || 
-	         new_area > (interface_area_mean + interface_area_std ) || 
+          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
+		 fabs(gamma_in_deg - 90) > epsilon ||
+	         new_area > (interface_area_mean + interface_area_std ) ||
 		 new_area < (interface_area_mean - interface_area_std));
           
 		  
@@ -527,58 +410,17 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 		  
     do
         {
-			int rand_index = genrand_int32()% num_combo;
-			int chosen_factor_1= all_substrate_combo[rand_index * 4 +0 ];
-			int chosen_factor_2= all_substrate_combo[rand_index * 4 +1 ];
-			int chosen_factor_3= all_substrate_combo[rand_index * 4 +2 ];
-			int chosen_factor_4= all_substrate_combo[rand_index * 4 +3 ];
-
-			float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
-			float new_vec[3][3];
-			mat3b3_mat3b3_multiply(transform_martix, prim_lv, new_vec);
-			get_lower_triangle(new_vec,lower_lattice_vector);
-
-			tmp_lattice_vec_a[0] = lower_lattice_vector[0][0];
-			tmp_lattice_vec_a[1] = lower_lattice_vector[0][1];
-			tmp_lattice_vec_a[2] = lower_lattice_vector[0][2];
-			tmp_lattice_vec_b[0] = lower_lattice_vector[1][0];
-			tmp_lattice_vec_b[1] = lower_lattice_vector[1][1];
-			tmp_lattice_vec_b[2] = lower_lattice_vector[1][2];
-
-
-			norm_tmp_lattice_vec_a = sqrt(pow(tmp_lattice_vec_a[0],2)+pow(tmp_lattice_vec_a[1],2)+pow(tmp_lattice_vec_a[2],2));
-			norm_tmp_lattice_vec_b = sqrt(pow(tmp_lattice_vec_b[0],2)+pow(tmp_lattice_vec_b[1],2)+pow(tmp_lattice_vec_b[2],2));
-			float dot_product = tmp_lattice_vec_a[0] * tmp_lattice_vec_b[0] + tmp_lattice_vec_a[1] * tmp_lattice_vec_b[1] 
-								+tmp_lattice_vec_a[2] * tmp_lattice_vec_b[2] ;
-			gamma = acos(dot_product/(norm_tmp_lattice_vec_a * norm_tmp_lattice_vec_b));
-			gamma_in_deg = gamma * 180/PI;
-			counter++;
-			if (counter > 10000000)
-			{
-				//printf("I am over 10000\n");
-				//fflush(stdout);
-				for (int i = 0; i < 3; i++)
-					{
-						for (int j =0; j<3; j++)
-							{
-								lattice_vector[i][j] = 0;
-							}
-					}
-
+			if (sample_2d_lattice_combo(all_substrate_combo, num_combo, prim_lv,
+					tmp_lattice_vec_a, tmp_lattice_vec_b,
+					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
+					&gamma, &gamma_in_deg, &new_area,
+					&counter, lattice_vector))
 				return;
-			}
-
-			//get area and check it if the interface mean and std is set
-			float cross[3];
-			cross_vector3_vector3(cross, tmp_lattice_vec_a,tmp_lattice_vec_b);
-			new_area = sqrt(pow(cross[0],2)+pow(cross[1],2)+pow(cross[2],2));
-
-			
         }
 
-          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length || 
-		 fabs(gamma_in_deg - 90) > epsilon || 
-	         new_area > (interface_area_mean + interface_area_std ) || 
+          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
+		 fabs(gamma_in_deg - 90) > epsilon ||
+	         new_area > (interface_area_mean + interface_area_std ) ||
 	  	 new_area < (interface_area_mean - interface_area_std));
           
 		  generate_rectangle_orthorhombic( lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
@@ -590,55 +432,16 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	  	  //fflush(stdout);
         do
         {
-			int rand_index = genrand_int32()% num_combo;
-			int chosen_factor_1= all_substrate_combo[rand_index * 4 +0 ];
-			int chosen_factor_2= all_substrate_combo[rand_index * 4 +1 ];
-			int chosen_factor_3= all_substrate_combo[rand_index * 4 +2 ];
-			int chosen_factor_4= all_substrate_combo[rand_index * 4 +3 ];
-
-			float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
-			float new_vec[3][3];
-			mat3b3_mat3b3_multiply(transform_martix, prim_lv, new_vec);
-			get_lower_triangle(new_vec,lower_lattice_vector);
-
-			tmp_lattice_vec_a[0] = lower_lattice_vector[0][0];
-			tmp_lattice_vec_a[1] = lower_lattice_vector[0][1];
-			tmp_lattice_vec_a[2] = lower_lattice_vector[0][2];
-			tmp_lattice_vec_b[0] = lower_lattice_vector[1][0];
-			tmp_lattice_vec_b[1] = lower_lattice_vector[1][1];
-			tmp_lattice_vec_b[2] = lower_lattice_vector[1][2];
-			norm_tmp_lattice_vec_a = sqrt(pow(tmp_lattice_vec_a[0],2)+pow(tmp_lattice_vec_a[1],2)+pow(tmp_lattice_vec_a[2],2));
-			norm_tmp_lattice_vec_b = sqrt(pow(tmp_lattice_vec_b[0],2)+pow(tmp_lattice_vec_b[1],2)+pow(tmp_lattice_vec_b[2],2));
-			float dot_product = tmp_lattice_vec_a[0] * tmp_lattice_vec_b[0] + tmp_lattice_vec_a[1] * tmp_lattice_vec_b[1] 
-								+tmp_lattice_vec_a[2] * tmp_lattice_vec_b[2] ;
-			gamma = acos(dot_product/(norm_tmp_lattice_vec_a * norm_tmp_lattice_vec_b));
-			gamma_in_deg = gamma * 180/PI;
-			counter++;
-			if (counter > 10000000)
-			{
-				//printf("I am over 10000\n");
-				//fflush(stdout);
-				for (int i = 0; i < 3; i++)
-					{
-						for (int j =0; j<3; j++)
-							{
-								lattice_vector[i][j] = 0;
-							}
-					}
-
+			if (sample_2d_lattice_combo(all_substrate_combo, num_combo, prim_lv,
+					tmp_lattice_vec_a, tmp_lattice_vec_b,
+					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
+					&gamma, &gamma_in_deg, &new_area,
+					&counter, lattice_vector))
 				return;
-			}
-
-			//get area and check it if the interface mean and std is set
-			float cross[3];
-			cross_vector3_vector3(cross, tmp_lattice_vec_a,tmp_lattice_vec_b);
-			new_area = sqrt(pow(cross[0],2)+pow(cross[1],2)+pow(cross[2],2));
-
-
         }
-          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length || 
-		 fabs(gamma_in_deg - 90) > epsilon || 
-	         new_area > (interface_area_mean + interface_area_std ) || 
+          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
+		 fabs(gamma_in_deg - 90) > epsilon ||
+	         new_area > (interface_area_mean + interface_area_std ) ||
 	         new_area < (interface_area_mean - interface_area_std));
           
 		  
@@ -651,56 +454,16 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	  	  //fflush(stdout);
         do
         {
-			int rand_index = genrand_int32()% num_combo;
-			int chosen_factor_1= all_substrate_combo[rand_index * 4 +0 ];
-			int chosen_factor_2= all_substrate_combo[rand_index * 4 +1 ];
-			int chosen_factor_3= all_substrate_combo[rand_index * 4 +2 ];
-			int chosen_factor_4= all_substrate_combo[rand_index * 4 +3 ];
-
-			float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
-			float new_vec[3][3];
-			mat3b3_mat3b3_multiply(transform_martix, prim_lv, new_vec);
-			get_lower_triangle(new_vec,lower_lattice_vector);
-
-			tmp_lattice_vec_a[0] = lower_lattice_vector[0][0];
-			tmp_lattice_vec_a[1] = lower_lattice_vector[0][1];
-			tmp_lattice_vec_a[2] = lower_lattice_vector[0][2];
-			tmp_lattice_vec_b[0] = lower_lattice_vector[1][0];
-			tmp_lattice_vec_b[1] = lower_lattice_vector[1][1];
-			tmp_lattice_vec_b[2] = lower_lattice_vector[1][2];
-			norm_tmp_lattice_vec_a = sqrt(pow(tmp_lattice_vec_a[0],2)+pow(tmp_lattice_vec_a[1],2)+pow(tmp_lattice_vec_a[2],2));
-			norm_tmp_lattice_vec_b = sqrt(pow(tmp_lattice_vec_b[0],2)+pow(tmp_lattice_vec_b[1],2)+pow(tmp_lattice_vec_b[2],2));
-			float dot_product = tmp_lattice_vec_a[0] * tmp_lattice_vec_b[0] + tmp_lattice_vec_a[1] * tmp_lattice_vec_b[1] 
-								+tmp_lattice_vec_a[2] * tmp_lattice_vec_b[2] ;
-			gamma = acos(dot_product/(norm_tmp_lattice_vec_a * norm_tmp_lattice_vec_b));
-			gamma_in_deg = gamma * 180/PI;
-			counter++;
-			if (counter > 10000000)
-			{
-				//printf("I am over 10000\n");
-				//fflush(stdout);
-				for (int i = 0; i < 3; i++)
-					{
-						for (int j =0; j<3; j++)
-							{
-								lattice_vector[i][j] = 0;
-							}
-					}
-
+			if (sample_2d_lattice_combo(all_substrate_combo, num_combo, prim_lv,
+					tmp_lattice_vec_a, tmp_lattice_vec_b,
+					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
+					&gamma, &gamma_in_deg, &new_area,
+					&counter, lattice_vector))
 				return;
-			}
-
-
-			//get area and check it if the interface mean and std is set
-			float cross[3];
-			cross_vector3_vector3(cross, tmp_lattice_vec_a,tmp_lattice_vec_b);
-			new_area = sqrt(pow(cross[0],2)+pow(cross[1],2)+pow(cross[2],2));
-
-
         }
           while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
-		 fabs(gamma_in_deg - 120) > epsilon || 
-		 new_area > (interface_area_mean + interface_area_std ) || 
+		 fabs(gamma_in_deg - 120) > epsilon ||
+		 new_area > (interface_area_mean + interface_area_std ) ||
 	      	 new_area < (interface_area_mean - interface_area_std));
 
 
