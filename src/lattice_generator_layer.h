@@ -1,6 +1,8 @@
 #ifndef LATTICE_GENERATOR_LAYER_H
 #define LATTICE_GENERATOR_LAYER_H
 
+#include "crystal.h"
+
 //void gen_triclinic_lattice(float lattice_vector[3][3], 
 //	float target_volume, float max_angle, float min_angle);
 //void gen_monoclinic_lattice(float lattice_vector[3][3], 
@@ -41,7 +43,7 @@ void generate_square_tetragonal(float lattice_vector[3][3],
                                                         float tmp_lattice_vec_b [3],float tmp_lattice_vec_a_norm,float tmp_lattice_vec_b_norm,float gamma);
 
 
-void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3], int spg,
+void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, int spg,
  float max_angle, float min_angle, float target_volume, float lattice_vector_2d [2][3],int num_combo,
  float interface_area_mean,float interface_area_std,int volume_multiplier,int SET_INTERFACE_AREA);
 

@@ -260,13 +260,17 @@ static int sample_2d_lattice_combo(
 	int *all_substrate_combo, int num_combo, float prim_lv[3][3],
 	float tmp_a[3], float tmp_b[3],
 	float *norm_a, float *norm_b, float *gamma, float *gamma_deg, float *new_area,
-	int *counter, float lattice_vector[3][3])
+	int *counter, float lattice_vector[3][3], int out_epitaxy[4])
 {
 	int rand_index = genrand_int32() % num_combo;
 	int chosen_factor_1 = all_substrate_combo[rand_index * 4 + 0];
 	int chosen_factor_2 = all_substrate_combo[rand_index * 4 + 1];
 	int chosen_factor_3 = all_substrate_combo[rand_index * 4 + 2];
 	int chosen_factor_4 = all_substrate_combo[rand_index * 4 + 3];
+	out_epitaxy[0] = chosen_factor_1;
+	out_epitaxy[1] = chosen_factor_2;
+	out_epitaxy[2] = chosen_factor_3;
+	out_epitaxy[3] = chosen_factor_4;
 
 	float transform_martix[3][3] = {{chosen_factor_1,chosen_factor_2,0},{chosen_factor_3,chosen_factor_4,0},{0,0,1}};
 	float new_vec[3][3];
@@ -306,9 +310,10 @@ static int sample_2d_lattice_combo(
 }
 
 
-void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3], int spg,
-	float max_angle, float min_angle, float target_volume, float lattice_vector_2d[2][3],	      int num_combo,float interface_area_mean,float interface_area_std,
-	int volume_multiplier,int SET_INTERFACE_AREA)
+void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, int spg,
+	float max_angle, float min_angle, float target_volume, float lattice_vector_2d[2][3],
+	int num_combo, float interface_area_mean, float interface_area_std,
+	int volume_multiplier, int SET_INTERFACE_AREA)
 {	
 	
 	//printf("num combo is %d\n",num_combo);
@@ -321,6 +326,7 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	float gamma_in_deg = 0;
 	int counter = 0;
 	float new_area = 0;
+	int out_epitaxy[4];
 	float prim_lv[3][3] = {{lattice_vector_2d[0][0],lattice_vector_2d[0][1],lattice_vector_2d[0][2] },
 						   {lattice_vector_2d[1][0],lattice_vector_2d[1][1],lattice_vector_2d[1][2] },
 						   {0.0,0.0,1.0}};
@@ -345,7 +351,7 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 					tmp_lattice_vec_a, tmp_lattice_vec_b,
 					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
 					&gamma, &gamma_in_deg, &new_area,
-					&counter, lattice_vector))
+					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
 	    }
 	  while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length
@@ -354,7 +360,11 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 		new_area < (interface_area_mean - interface_area_std));
 	  
 	  
-	  generate_oblique_triclinic( lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
+	  random_crystal->epitaxy_matrix[0] = out_epitaxy[0];
+	  random_crystal->epitaxy_matrix[1] = out_epitaxy[1];
+	  random_crystal->epitaxy_matrix[2] = out_epitaxy[2];
+	  random_crystal->epitaxy_matrix[3] = out_epitaxy[3];
+	  generate_oblique_triclinic( random_crystal->lattice_vectors,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
 	}
 
 
@@ -368,7 +378,7 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 					tmp_lattice_vec_a, tmp_lattice_vec_b,
 					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
 					&gamma, &gamma_in_deg, &new_area,
-					&counter, lattice_vector))
+					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
       while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
@@ -376,7 +386,11 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	     new_area > (interface_area_mean + interface_area_std ) ||
 	     new_area < (interface_area_mean - interface_area_std));
 
-	  generate_oblique_monoclinic( lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
+	  random_crystal->epitaxy_matrix[0] = out_epitaxy[0];
+	  random_crystal->epitaxy_matrix[1] = out_epitaxy[1];
+	  random_crystal->epitaxy_matrix[2] = out_epitaxy[2];
+	  random_crystal->epitaxy_matrix[3] = out_epitaxy[3];
+	  generate_oblique_monoclinic( random_crystal->lattice_vectors,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
         }   
 	
 
@@ -390,7 +404,7 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 					tmp_lattice_vec_a, tmp_lattice_vec_b,
 					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
 					&gamma, &gamma_in_deg, &new_area,
-					&counter, lattice_vector))
+					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
 
@@ -400,7 +414,11 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 		 new_area < (interface_area_mean - interface_area_std));
           
 		  
-		  generate_rectangle_monoclinic(lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
+		  random_crystal->epitaxy_matrix[0] = out_epitaxy[0];
+		  random_crystal->epitaxy_matrix[1] = out_epitaxy[1];
+		  random_crystal->epitaxy_matrix[2] = out_epitaxy[2];
+		  random_crystal->epitaxy_matrix[3] = out_epitaxy[3];
+		  generate_rectangle_monoclinic(random_crystal->lattice_vectors,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
     }
 
 	 else if (spg <= 48)   //rectangle_orthorombic
@@ -414,7 +432,7 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 					tmp_lattice_vec_a, tmp_lattice_vec_b,
 					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
 					&gamma, &gamma_in_deg, &new_area,
-					&counter, lattice_vector))
+					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
 
@@ -423,7 +441,11 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	         new_area > (interface_area_mean + interface_area_std ) ||
 	  	 new_area < (interface_area_mean - interface_area_std));
           
-		  generate_rectangle_orthorhombic( lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
+		  random_crystal->epitaxy_matrix[0] = out_epitaxy[0];
+		  random_crystal->epitaxy_matrix[1] = out_epitaxy[1];
+		  random_crystal->epitaxy_matrix[2] = out_epitaxy[2];
+		  random_crystal->epitaxy_matrix[3] = out_epitaxy[3];
+		  generate_rectangle_orthorhombic( random_crystal->lattice_vectors,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
     }
 
 	else if (spg <= 64)  //square_tetragonal
@@ -436,7 +458,7 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 					tmp_lattice_vec_a, tmp_lattice_vec_b,
 					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
 					&gamma, &gamma_in_deg, &new_area,
-					&counter, lattice_vector))
+					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
           while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
@@ -445,7 +467,11 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	         new_area < (interface_area_mean - interface_area_std));
           
 		  
-		  generate_square_tetragonal( lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
+		  random_crystal->epitaxy_matrix[0] = out_epitaxy[0];
+		  random_crystal->epitaxy_matrix[1] = out_epitaxy[1];
+		  random_crystal->epitaxy_matrix[2] = out_epitaxy[2];
+		  random_crystal->epitaxy_matrix[3] = out_epitaxy[3];
+		  generate_square_tetragonal( random_crystal->lattice_vectors,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
     }
 
 	else if (spg <= 80)  //hexagonal_trigonnal, hexagonal_hexagonal
@@ -458,7 +484,7 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 					tmp_lattice_vec_a, tmp_lattice_vec_b,
 					&norm_tmp_lattice_vec_a, &norm_tmp_lattice_vec_b,
 					&gamma, &gamma_in_deg, &new_area,
-					&counter, lattice_vector))
+					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
           while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
@@ -467,7 +493,11 @@ void generate_layer_lattice(int *all_substrate_combo,float lattice_vector[3][3],
 	      	 new_area < (interface_area_mean - interface_area_std));
 
 
-          generate_hexagonal_hexagonal(lattice_vector,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
+          random_crystal->epitaxy_matrix[0] = out_epitaxy[0];
+          random_crystal->epitaxy_matrix[1] = out_epitaxy[1];
+          random_crystal->epitaxy_matrix[2] = out_epitaxy[2];
+          random_crystal->epitaxy_matrix[3] = out_epitaxy[3];
+          generate_hexagonal_hexagonal(random_crystal->lattice_vectors,target_volume * volume_multiplier,max_angle, min_angle, tmp_lattice_vec_a,tmp_lattice_vec_b,norm_tmp_lattice_vec_a,norm_tmp_lattice_vec_b,gamma);
     }
 
 
