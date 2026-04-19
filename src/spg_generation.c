@@ -190,7 +190,7 @@ int generate_layer_crystal(crystal* random_crystal, molecule* mol,float volume,
     int hall_number;
     hall_number = spg;
 
-    generate_layer_lattice(all_substrate_combo,random_crystal->lattice_vectors, spg, max_angle, min_angle,
+    generate_layer_lattice(all_substrate_combo, random_crystal, spg, max_angle, min_angle,
                 volume,lattice_vector_2d,num_combo,interface_area_mean,interface_area_std,
                 volume_multiplier,SET_INTERFACE_AREA);
     //printf("lg is %d and lattice vector is %f, %f, %f\n", spg, random_crystal->lattice_vectors[0][0],random_crystal->lattice_vectors[0][1]
