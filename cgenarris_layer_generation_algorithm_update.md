@@ -453,6 +453,53 @@ Buckets that are empty for a given class mark the corresponding layer groups inf
   pre-aligns the raw pool with the target volume Gaussian so that the down-selection of
   §2.9 discards little.
 
+#### 2.6.4 Commensurability and the stored epitaxy matrix
+
+Lagrange reduction does **not** break the substrate relation. Reduction is a unimodular
+change of basis: if $H$ is the HNF matrix and the reduction steps compose to
+$U \in GL(2,\mathbb Z)$ with $\det U = +1$ (enforced; if a reduction sequence ends with
+$\det U = -1$, one basis vector is negated), the reduced basis is
+
+$$ M = U H, \qquad M \in \mathbb Z^{2\times2}, \qquad \det M = \det H = d > 0, $$
+
+so the film's in-plane vectors remain **exact integer combinations of the substrate
+vectors**,
+
+$$ \begin{pmatrix} \mathbf a_f \\ \mathbf b_f \end{pmatrix} = M \begin{pmatrix} \mathbf s_1 \\ \mathbf s_2 \end{pmatrix}, $$
+
+which is precisely the object the current code stores as `epitaxy_matrix`. The film cell
+is therefore still an exact substrate supercell, tiled by $d = \det M$ substrate
+primitive cells, and the reconstruction is fully constructive:
+
+- substrate supercell vectors $= M \,(\mathbf s_1; \mathbf s_2)$ — identical in-plane
+  cell to the film by construction, with no floating-point fitting;
+- the $d$ substrate motif copies inside it sit at the coset representatives of the
+  sublattice: recomputing the HNF $\tilde H = \begin{pmatrix} p & q \\ 0 & r\end{pmatrix}$
+  of $M$ (an $O(1)$ integer computation), the representatives are
+  $$ \mathbf t_{ij} = i\,\mathbf s_1 + j\,\mathbf s_2, \qquad 0 \le i < p, \quad 0 \le j < r, $$
+  wrapped into the supercell by reducing their fractional coordinates into $[0,1)$.
+
+**What is stored with every generated film: the reduced integer matrix $M$** — a
+drop-in replacement for the existing `epitaxy_matrix` field in the output file and MPI
+transfer. $H$ and $U$ need not be stored; they are recoverable from $M$ in microseconds.
+Because $M$ is exact integers, commensurability survives any downstream floating-point
+handling: future interface-assembly tasks should reconstruct the matching substrate
+supercell by applying $M$ to the substrate primitive vectors, rather than trusting
+stored float lattice vectors.
+
+Two fine points:
+
+- **Handedness.** $\det M = +1 \cdot \det H > 0$, so the right-handed (chirality)
+  convention of the current code is preserved automatically by the $\det U = +1$
+  canonicalization.
+- **Centered layer groups** (c211, cm11, c2/m11, c222, cmm2, …): the epitaxy matrix
+  describes the *conventional* rectangular cell; the centering translation
+  $(\mathbf a_f + \mathbf b_f)/2$ is a film translation but generally **not** a substrate
+  lattice vector. The joint film+substrate periodicity is then the conventional cell —
+  consistent with how the symmetry database applies centering as an internal operation.
+  Optionally, candidates whose centering vector happens to be a substrate lattice vector
+  can be tagged, since they admit a primitive (half-area) joint cell.
+
 ### 2.7 The out-of-plane vector c
 
 #### 2.7.1 Direction: derived from symmetry closure, not hardcoded
@@ -574,8 +621,9 @@ synchronization during generation** (no per-batch gather/broadcast, no early-sto
 coordination). Ranks send accepted raw structures (or, cheaper, their seeds + epitaxy
 choice + derived scalars) to rank 0 at bucket completion; rank 0 performs the
 down-selection of §2.9 and writes `geometry.out` with the metadata required downstream:
-layer group, Wyckoff position, epitaxy matrix, COM, orientation (Euler angles /
-quaternion), $\mathbf c_\parallel$ choice, realized volume, contact pair info.
+layer group, Wyckoff position, the reduced integer epitaxy matrix $M$ (§2.6.4), COM,
+orientation (Euler angles / quaternion), $\mathbf c_\parallel$ choice, realized volume,
+contact pair info.
 
 ### 2.11 Parameters
 
