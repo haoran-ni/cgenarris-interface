@@ -1,0 +1,621 @@
+% This file aims at providing detailed explanations, detailed and step-by-step mathematical derivations of the concepts in `cgenarris_layer_generation_algorithm_update.md`.
+% All notations and symbols should be clearly explained.
+
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{enumitem}
+
+\title{Supplementary Notes for the cgenarris Layer-Generation Algorithm}
+\author{}
+\date{}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\T}{\mathsf{T}}
+
+\begin{document}
+
+\maketitle
+
+\section{Scope of This Supplement}
+
+This supplement records detailed explanations for the molecular point-group
+detection part of the new layer-generation algorithm.  It currently covers only
+the concepts discussed so far:
+\begin{enumerate}[label=(\roman*)]
+    \item atom equivalence classes;
+    \item the gyration tensor and its principal axes;
+    \item why symmetry axes are related to eigenvectors of the gyration tensor;
+    \item candidate rotation axes and mirror-plane normals;
+    \item proper rotations, mirror reflections, and atom permutations.
+\end{enumerate}
+
+\section{Notation and Coordinate Convention}
+
+Consider a molecule with \(N\) atoms.  Before detecting molecular symmetry, the
+coordinates are shifted so that the centroid is at the origin.  If
+\(\mathbf r_i^{\,0}\in\R^3\) is the input Cartesian coordinate of atom \(i\),
+then the molecular centroid is
+\[
+    \bar{\mathbf r}
+    =
+    \frac{1}{N}\sum_{i=1}^{N}\mathbf r_i^{\,0},
+\]
+and the centered coordinate of atom \(i\) is
+\[
+    \mathbf r_i
+    =
+    \mathbf r_i^{\,0} - \bar{\mathbf r}.
+\]
+Here:
+\begin{itemize}
+    \item \(i\in\{1,\dots,N\}\) is an atom index;
+    \item \(\mathbf r_i\in\R^3\) is a column vector
+    \[
+        \mathbf r_i =
+        \begin{bmatrix}
+        x_i\\ y_i\\ z_i
+        \end{bmatrix};
+    \]
+    \item \(x_i,y_i,z_i\) are Cartesian coordinates measured relative to the
+    molecular centroid;
+    \item the superscript \({\T}\) denotes transpose, so
+    \(\mathbf r_i^{\T}\) is a row vector;
+    \item \(\tau\) denotes the user-specified distance tolerance for symmetry
+    matching.
+\end{itemize}
+
+All point-group operations in this part of the algorithm act on these centered
+Cartesian coordinates.  No lattice vectors or fractional coordinates are used in
+molecular point-group detection.
+
+\section{Atom Equivalence Classes}
+
+\subsection{Definition}
+
+Each atom has a chemical element label, denoted \(e_i\), and a centered Cartesian
+coordinate \(\mathbf r_i\).  For atoms \(i\) and \(k\), define the interatomic
+distance
+\[
+    d_{ik} = \lVert \mathbf r_i - \mathbf r_k\rVert .
+\]
+The distance-environment signature of atom \(i\) is the sorted multiset
+\[
+    \mathrm{sig}(i)
+    =
+    \big\{(e_k,d_{ik}) : k\ne i\big\}.
+\]
+That is, \(\mathrm{sig}(i)\) records the element and distance of every other atom
+as seen from atom \(i\).  The entries are sorted so that two signatures can be
+compared entry by entry.
+
+Two atoms \(i\) and \(j\) are placed in the same equivalence class if:
+\begin{enumerate}[label=(\alph*)]
+    \item they have the same element, \(e_i=e_j\); and
+    \item their sorted distance-environment signatures match within the
+    tolerance \(\tau\).
+\end{enumerate}
+In words, two equivalent atoms are indistinguishable by their element type and by
+their full distance environment in the molecule.
+
+\subsection{Why Equivalence Classes Are Useful}
+
+Let \(Q\) be a true molecular symmetry operation.  In this section, \(Q\) is a
+\(3\times 3\) orthogonal Cartesian matrix, such as a rotation, reflection,
+inversion, or improper rotation.  If \(Q\) is a symmetry of the molecule, then it
+maps each atom onto another atom of the same element.  Therefore there exists a
+permutation \(\pi\) of the atom indices such that
+\[
+    Q\mathbf r_i = \mathbf r_{\pi(i)}
+\]
+for every atom \(i\), up to the tolerance \(\tau\).  The notation \(\pi(i)\)
+means ``the index of the atom onto which atom \(i\) is mapped.''
+
+Because \(Q\) is orthogonal, it preserves distances:
+\[
+    \lVert Q\mathbf r_i - Q\mathbf r_k\rVert
+    =
+    \lVert \mathbf r_i - \mathbf r_k\rVert .
+\]
+Using \(Q\mathbf r_i=\mathbf r_{\pi(i)}\) and
+\(Q\mathbf r_k=\mathbf r_{\pi(k)}\), this becomes
+\[
+    \lVert \mathbf r_{\pi(i)} - \mathbf r_{\pi(k)}\rVert
+    =
+    \lVert \mathbf r_i - \mathbf r_k\rVert .
+\]
+Thus a true symmetry operation preserves both element labels and all
+interatomic distances.  Consequently, if two atoms are related by a true
+molecular symmetry operation, they must lie in the same equivalence class.
+
+The algorithm uses this fact in two ways:
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Restricted atom matching.}  When verifying a trial symmetry
+    operation, atom \(i\) only needs to be matched against atoms in its own
+    equivalence class.
+    \item \textbf{Candidate direction generation.}  Candidate symmetry axes and
+    mirror normals are constructed from vectors involving atoms in the same
+    equivalence class.  This focuses the search on geometrically plausible
+    symmetry directions.
+\end{enumerate}
+
+\subsection{Completeness of the Equivalence-Class Test}
+
+The equivalence-class criterion is complete as a necessary condition: if two
+atoms are related by an exact symmetry operation, then they have the same
+element and the same distance environment.  With a sufficiently large tolerance
+\(\tau\), the same remains true for slightly relaxed numerical geometries.
+
+The criterion is not sufficient: two atoms may accidentally have identical
+distance environments even if no actual symmetry operation maps one atom to the
+other.  This does not create an incorrect symmetry operation, because every
+candidate operation is later verified explicitly by applying its matrix to all
+atoms and checking whether a one-to-one atom mapping exists within the tolerance
+\(\tau\).
+
+\section{The Gyration Tensor and Its Principal Axes}
+
+\subsection{Definition of the Gyration Tensor}
+
+The unweighted gyration tensor used here is
+\[
+    T = \sum_{i=1}^{N} \mathbf r_i \mathbf r_i^{\T}.
+\]
+Here:
+\begin{itemize}
+    \item \(T\) is a \(3\times 3\) real matrix;
+    \item \(\mathbf r_i\) is the centered Cartesian coordinate of atom \(i\);
+    \item \(\mathbf r_i^{\T}\) is the transpose of \(\mathbf r_i\);
+    \item \(\mathbf r_i\mathbf r_i^{\T}\) is the outer product of
+    \(\mathbf r_i\) with itself;
+    \item the sum adds one such \(3\times 3\) matrix for every atom.
+\end{itemize}
+For one atom,
+\[
+    \mathbf r_i\mathbf r_i^{\T}
+    =
+    \begin{bmatrix}
+    x_i x_i & x_i y_i & x_i z_i\\
+    y_i x_i & y_i y_i & y_i z_i\\
+    z_i x_i & z_i y_i & z_i z_i
+    \end{bmatrix}.
+\]
+Therefore the entries of \(T\) are
+\[
+    T_{\alpha\beta}
+    =
+    \sum_{i=1}^{N}(\mathbf r_i)_\alpha(\mathbf r_i)_\beta,
+\]
+where \(\alpha,\beta\in\{x,y,z\}\), and \((\mathbf r_i)_\alpha\) denotes the
+\(\alpha\)-component of atom \(i\)'s centered coordinate.
+
+\subsection{Why \(T\) Is Symmetric}
+
+The transpose of one outer product is
+\[
+    \left(\mathbf r_i\mathbf r_i^{\T}\right)^{\T}
+    =
+    \mathbf r_i\mathbf r_i^{\T}.
+\]
+Thus every term in the sum is symmetric.  Equivalently,
+\[
+    T_{\alpha\beta}
+    =
+    \sum_i(\mathbf r_i)_\alpha(\mathbf r_i)_\beta
+    =
+    \sum_i(\mathbf r_i)_\beta(\mathbf r_i)_\alpha
+    =
+    T_{\beta\alpha},
+\]
+because scalar multiplication commutes.  Hence \(T=T^{\T}\).
+
+\subsection{Physical Meaning: Squared Molecular Spread}
+
+Let \(\mathbf u\in\R^3\) be a unit vector, \(\lVert\mathbf u\rVert=1\).
+The scalar projection of atom \(i\) along direction \(\mathbf u\) is
+\[
+    \mathbf u\cdot \mathbf r_i = \mathbf u^{\T}\mathbf r_i.
+\]
+The total squared spread of the molecule along direction \(\mathbf u\) is
+\[
+    q(\mathbf u)
+    =
+    \sum_{i=1}^{N}(\mathbf u^{\T}\mathbf r_i)^2.
+\]
+This can be written in terms of \(T\):
+\[
+\begin{aligned}
+    q(\mathbf u)
+    &=
+    \sum_{i=1}^{N}
+    (\mathbf u^{\T}\mathbf r_i)(\mathbf r_i^{\T}\mathbf u)\\
+    &=
+    \mathbf u^{\T}
+    \left(\sum_{i=1}^{N}\mathbf r_i\mathbf r_i^{\T}\right)
+    \mathbf u\\
+    &=
+    \mathbf u^{\T}T\mathbf u.
+\end{aligned}
+\]
+Thus \(\mathbf u^{\T}T\mathbf u\) has a direct geometric meaning: it measures
+the molecule's total squared extent along the direction \(\mathbf u\).
+
+\subsection{Why Principal Axes Are Eigenvectors of \(T\)}
+
+The natural geometric directions are the unit vectors \(\mathbf u\) for which
+the squared spread \(q(\mathbf u)=\mathbf u^{\T}T\mathbf u\) is stationary.
+These are obtained by optimizing \(q(\mathbf u)\) subject to the unit-length
+constraint
+\[
+    \mathbf u^{\T}\mathbf u = 1.
+\]
+Introduce a Lagrange multiplier \(\lambda\) and define
+\[
+    \mathcal L(\mathbf u,\lambda)
+    =
+    \mathbf u^{\T}T\mathbf u
+    -
+    \lambda(\mathbf u^{\T}\mathbf u-1).
+\]
+Taking the derivative with respect to \(\mathbf u\) gives
+\[
+    2T\mathbf u - 2\lambda \mathbf u = 0.
+\]
+Therefore
+\[
+    T\mathbf u = \lambda \mathbf u.
+\]
+This is precisely the eigenvector equation for \(T\).  Hence the principal
+directions of molecular spread are eigenvectors of the gyration tensor.
+
+The eigenvalue \(\lambda\) is the squared spread along the corresponding
+eigenvector.  The largest eigenvalue gives the direction of largest second
+moment, the smallest eigenvalue gives the direction of smallest second moment,
+and the remaining eigenvalue gives the intermediate direction.  This is why the
+principal axes can be interpreted as long, medium, and short axes in the
+second-moment sense.
+
+\subsection{Orthogonality and Degeneracy}
+
+Because \(T\) is a real symmetric matrix, the spectral theorem guarantees that
+\(T\) has three real eigenvalues and admits an orthonormal eigenbasis.  Thus one
+can always choose three mutually orthogonal eigenvectors of \(T\).
+
+If two eigenvalues are distinct, their eigenvectors are automatically
+orthogonal.  To see this, suppose
+\[
+    T\mathbf u = \lambda \mathbf u,
+    \qquad
+    T\mathbf v = \mu \mathbf v,
+    \qquad
+    \lambda\ne\mu.
+\]
+Then
+\[
+    \lambda \mathbf u^{\T}\mathbf v
+    =
+    (T\mathbf u)^{\T}\mathbf v
+    =
+    \mathbf u^{\T}T^{\T}\mathbf v
+    =
+    \mathbf u^{\T}T\mathbf v
+    =
+    \mu \mathbf u^{\T}\mathbf v.
+\]
+Therefore
+\[
+    (\lambda-\mu)\mathbf u^{\T}\mathbf v=0.
+\]
+Since \(\lambda\ne\mu\), it follows that
+\[
+    \mathbf u^{\T}\mathbf v=0.
+\]
+Thus \(\mathbf u\) and \(\mathbf v\) are orthogonal.
+
+If an eigenvalue is degenerate, the corresponding eigenspace has dimension
+larger than one.  In that case the individual eigenvectors inside the degenerate
+subspace are not unique, although an orthonormal basis can always be chosen
+inside that subspace.  For example:
+\begin{itemize}
+    \item if \(\lambda_1>\lambda_2>\lambda_3\), all three principal axes are
+    unique up to sign;
+    \item if \(\lambda_1=\lambda_2\ne\lambda_3\), the nondegenerate axis is
+    unique, but any orthonormal pair spanning the two-dimensional degenerate
+    plane is equally valid;
+    \item if \(\lambda_1=\lambda_2=\lambda_3\), the tensor is isotropic and does
+    not identify any preferred direction.
+\end{itemize}
+This is why the algorithm does not rely only on the three eigenvectors of
+\(T\).  It also adds atom-derived candidate directions, which are essential in
+degenerate or nearly degenerate cases.
+
+\subsection{Why a Nondegenerate Symmetry Axis Must Be a Principal Axis}
+
+Let \(Q\) be a true molecular symmetry operation represented by a \(3\times 3\)
+orthogonal matrix.  Since \(Q\) is a symmetry, it permutes the atoms.  Therefore
+there exists a permutation \(\pi\) such that
+\[
+    Q\mathbf r_i = \mathbf r_{\pi(i)}
+\]
+for all atoms \(i\).
+
+Now transform the gyration tensor:
+\[
+\begin{aligned}
+    QTQ^{\T}
+    &=
+    Q
+    \left(\sum_{i=1}^{N}\mathbf r_i\mathbf r_i^{\T}\right)
+    Q^{\T}\\
+    &=
+    \sum_{i=1}^{N}
+    (Q\mathbf r_i)(Q\mathbf r_i)^{\T}\\
+    &=
+    \sum_{i=1}^{N}
+    \mathbf r_{\pi(i)}\mathbf r_{\pi(i)}^{\T}.
+\end{aligned}
+\]
+Because \(\pi\) is a permutation, the final sum is just a reordering of the
+original atom sum.  Hence
+\[
+    QTQ^{\T} = T.
+\]
+Multiplying this equation on the right by \(Q\), and using \(Q^{\T}Q=I\), gives
+\[
+    QT = TQ.
+\]
+Thus \(T\) commutes with every true molecular symmetry operation \(Q\).
+
+Now suppose \(Q\) is a nontrivial proper rotation about the unit axis
+\(\mathbf a\).  The axis direction is fixed by the rotation:
+\[
+    Q\mathbf a = \mathbf a.
+\]
+Using \(QT=TQ\),
+\[
+    Q(T\mathbf a)
+    =
+    T(Q\mathbf a)
+    =
+    T\mathbf a.
+\]
+Therefore \(T\mathbf a\) is also fixed by the rotation \(Q\).  For a nontrivial
+proper rotation in three dimensions, the only fixed vectors are those parallel
+to the rotation axis \(\mathbf a\).  Hence \(T\mathbf a\) must be parallel to
+\(\mathbf a\), so there exists a scalar \(\lambda\) such that
+\[
+    T\mathbf a = \lambda\mathbf a.
+\]
+This is the eigenvector equation.  Therefore the rotation axis
+\(\mathbf a\) is an eigenvector of \(T\).
+
+If the eigenvalues of \(T\) are nondegenerate, the eigenvector directions are
+unique up to sign.  Consequently, any true proper rotation axis must coincide
+with one of the three principal axes of \(T\).  If the eigenvalues are
+degenerate, the tensor may identify only a subspace, not a unique axis, and
+additional atom-derived candidate directions are required.
+
+\section{Candidate Symmetry Directions}
+
+\subsection{Sources of Candidate Directions}
+
+The algorithm builds a finite list of candidate directions.  A direction may
+later be interpreted either as a rotation axis or as a mirror-plane normal,
+depending on the trial operation being tested.
+
+The candidate set contains:
+\begin{enumerate}[label=(\alph*)]
+    \item the three principal axes of the gyration tensor \(T\);
+    \item for atoms \(i,j\) in the same equivalence class, the directions
+    \[
+        \mathbf r_i,\qquad
+        \mathbf r_i+\mathbf r_j,\qquad
+        \mathbf r_i-\mathbf r_j,\qquad
+        \mathbf r_i\times\mathbf r_j.
+    \]
+\end{enumerate}
+Zero or near-zero vectors are discarded.  All remaining directions are
+normalized to unit length and deduplicated up to sign, since the geometric line
+defined by \(\mathbf a\) is the same as that defined by \(-\mathbf a\).
+
+\subsection{Geometric Motivation}
+
+These atom-derived directions cover common symmetry geometries:
+\begin{itemize}
+    \item \(\mathbf r_i\) captures axes or normals passing through an atom and
+    the centroid;
+    \item \(\mathbf r_i+\mathbf r_j\) captures bisectors of equivalent atom
+    pairs;
+    \item \(\mathbf r_i-\mathbf r_j\) captures the normal direction for a mirror
+    plane that swaps atoms \(i\) and \(j\);
+    \item \(\mathbf r_i\times\mathbf r_j\) captures a direction normal to the
+    plane spanned by \(\mathbf r_i\) and \(\mathbf r_j\).
+\end{itemize}
+The principal axes supply global second-moment directions.  The atom-derived
+directions supply additional candidates in degenerate cases where the gyration
+tensor does not determine all symmetry axes uniquely.
+
+\section{Trial Symmetry Operation Matrices}
+
+\subsection{Proper Rotations}
+
+Let \(\mathbf a\in\R^3\) be a unit candidate rotation axis, and let \(\theta\)
+be a trial rotation angle.  The rotation matrix about \(\mathbf a\) by angle
+\(\theta\) is given by Rodrigues' formula:
+\[
+    R(\mathbf a,\theta)
+    =
+    \cos\theta\, I
+    +
+    \sin\theta\, [\mathbf a]_\times
+    +
+    (1-\cos\theta)\,\mathbf a\mathbf a^{\T}.
+\]
+Here:
+\begin{itemize}
+    \item \(R(\mathbf a,\theta)\) is a \(3\times 3\) rotation matrix;
+    \item \(I\) is the \(3\times 3\) identity matrix;
+    \item \(\mathbf a\mathbf a^{\T}\) is the projection matrix onto the axis
+    direction \(\mathbf a\);
+    \item \([\mathbf a]_\times\) is the skew-symmetric cross-product matrix
+    satisfying
+    \[
+        [\mathbf a]_\times \mathbf v = \mathbf a\times\mathbf v
+    \]
+    for any vector \(\mathbf v\).
+\end{itemize}
+If
+\[
+    \mathbf a =
+    \begin{bmatrix}
+    a_x\\ a_y\\ a_z
+    \end{bmatrix},
+\]
+then
+\[
+    [\mathbf a]_\times
+    =
+    \begin{bmatrix}
+    0 & -a_z & a_y\\
+    a_z & 0 & -a_x\\
+    -a_y & a_x & 0
+    \end{bmatrix}.
+\]
+
+The formula can be understood by decomposing any vector \(\mathbf v\) into a
+component parallel to the axis and a component perpendicular to it:
+\[
+    \mathbf v_\parallel = (\mathbf a^{\T}\mathbf v)\mathbf a,
+    \qquad
+    \mathbf v_\perp = \mathbf v-\mathbf v_\parallel.
+\]
+A rotation about \(\mathbf a\) leaves \(\mathbf v_\parallel\) unchanged and
+rotates \(\mathbf v_\perp\) in the plane perpendicular to \(\mathbf a\).  The
+matrix above is the compact Cartesian form of that operation.
+
+Only discrete trial angles are tested:
+\[
+    \theta = \frac{2\pi}{n},
+    \qquad
+    n=2,3,\dots,n_{\max}.
+\]
+The integer \(n\) is the candidate rotation order.  For example, \(n=2\)
+corresponds to \(180^\circ\), \(n=3\) to \(120^\circ\), \(n=4\) to
+\(90^\circ\), and \(n=6\) to \(60^\circ\).  Linear molecules, which may have
+continuous rotational symmetry, are handled separately.
+
+\subsection{Mirror Reflections}
+
+Let \(\mathbf n\in\R^3\) be a unit vector normal to a candidate mirror plane.
+The mirror plane is the plane through the origin perpendicular to \(\mathbf n\):
+\[
+    \{\mathbf r\in\R^3 : \mathbf n^{\T}\mathbf r=0\}.
+\]
+The reflection matrix through this plane is
+\[
+    \sigma(\mathbf n)
+    =
+    I - 2\mathbf n\mathbf n^{\T}.
+\]
+
+To derive this formula, decompose any vector \(\mathbf r\) into a component
+normal to the plane and a component lying in the plane.  Since \(\mathbf n\) is
+unit length, the normal component is
+\[
+    \mathbf r_\perp
+    =
+    (\mathbf n^{\T}\mathbf r)\mathbf n.
+\]
+The matrix \(\mathbf n\mathbf n^{\T}\) is the projection matrix onto
+\(\mathbf n\), because
+\[
+    \mathbf n\mathbf n^{\T}\mathbf r
+    =
+    \mathbf n(\mathbf n^{\T}\mathbf r)
+    =
+    (\mathbf n^{\T}\mathbf r)\mathbf n
+    =
+    \mathbf r_\perp.
+\]
+The in-plane component is
+\[
+    \mathbf r_\parallel
+    =
+    \mathbf r-\mathbf r_\perp.
+\]
+A mirror reflection keeps \(\mathbf r_\parallel\) unchanged and flips
+\(\mathbf r_\perp\):
+\[
+\begin{aligned}
+    \mathbf r'
+    &=
+    \mathbf r_\parallel - \mathbf r_\perp\\
+    &=
+    (\mathbf r-\mathbf r_\perp)-\mathbf r_\perp\\
+    &=
+    \mathbf r-2\mathbf r_\perp\\
+    &=
+    \mathbf r - 2\mathbf n\mathbf n^{\T}\mathbf r\\
+    &=
+    (I-2\mathbf n\mathbf n^{\T})\mathbf r.
+\end{aligned}
+\]
+Thus \(\sigma(\mathbf n)=I-2\mathbf n\mathbf n^{\T}\).
+
+\subsection{Improper Rotations}
+
+Improper rotations are tested because many molecular point groups contain
+orientation-reversing operations.  Examples include mirror planes, inversion,
+and roto-reflection axes.  Without improper operations, molecules such as planar
+\(D_{2h}\) systems would be classified incompletely.
+
+For a unit axis \(\mathbf a\), an improper rotation can be written as
+\[
+    S(\mathbf a,\theta)
+    =
+    R(\mathbf a,\theta)\,\sigma(\mathbf a),
+\]
+where \(R(\mathbf a,\theta)\) is a proper rotation about \(\mathbf a\), and
+\(\sigma(\mathbf a)\) is the reflection through the plane perpendicular to
+\(\mathbf a\).  The determinant of a proper rotation is \(+1\), whereas the
+determinant of a reflection is \(-1\).  Therefore the determinant of an
+improper rotation is \(-1\).
+
+\section{Verification by Atom Permutation}
+
+A trial matrix \(M\) is accepted as a molecular symmetry operation only if it
+maps the molecule onto itself.  This is tested by requiring a bijection
+\(\pi\) of atom indices such that
+\[
+    \lVert M\mathbf r_i-\mathbf r_{\pi(i)}\rVert \le \tau
+\]
+for every atom \(i\), with matching element labels
+\[
+    e_i = e_{\pi(i)}.
+\]
+Here:
+\begin{itemize}
+    \item \(M\) is the trial symmetry matrix;
+    \item \(\mathbf r_i\) is the original centered coordinate of atom \(i\);
+    \item \(M\mathbf r_i\) is the transformed coordinate;
+    \item \(\pi(i)\) is the index of the original atom matched to transformed
+    atom \(i\);
+    \item \(\tau\) is the distance tolerance.
+\end{itemize}
+
+The word ``bijection'' means that the mapping is one-to-one and onto: every
+transformed atom must match exactly one original atom, and every original atom
+must be used exactly once.  This prevents two transformed atoms from being
+assigned to the same original atom, and it prevents any original atom from being
+left unmatched.
+
+The candidate-axis construction is therefore allowed to be generous.  It may
+generate directions that are not actual symmetry directions.  Such candidates
+are harmless, because the final atom-permutation verification rejects any trial
+matrix that does not map the full molecule onto itself.
+
+\end{document}
