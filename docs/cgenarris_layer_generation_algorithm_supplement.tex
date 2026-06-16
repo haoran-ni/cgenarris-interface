@@ -31,7 +31,12 @@ the concepts discussed so far:
     \item the gyration tensor and its principal axes;
     \item why symmetry axes are related to eigenvectors of the gyration tensor;
     \item candidate rotation axes and mirror-plane normals;
-    \item proper rotations, mirror reflections, and atom permutations.
+    \item proper rotations, mirror reflections, and atom permutations;
+    \item operation identity by \((\pi,\det M)\), exact group closure, and
+    permutation composition;
+    \item nonlinear versus linear molecules;
+    \item orthogonal Procrustes matrix refinement;
+    \item recording symmetry elements and classifying the point group.
 \end{enumerate}
 
 \section{Notation and Coordinate Convention}
@@ -617,5 +622,637 @@ The candidate-axis construction is therefore allowed to be generous.  It may
 generate directions that are not actual symmetry directions.  Such candidates
 are harmless, because the final atom-permutation verification rejects any trial
 matrix that does not map the full molecule onto itself.
+
+\section{Operation Identity: \((\pi,\det M)\)}
+
+\subsection{The Permutation as an Atom Mapping}
+
+The permutation \(\pi\) is a mapping of atom indices.  If the molecule has
+\(N\) atoms, then
+\[
+    \pi:\{1,\dots,N\}\rightarrow\{1,\dots,N\}.
+\]
+For a trial symmetry matrix \(M\), \(\pi(i)\) is the index of the atom onto
+which atom \(i\) is mapped:
+\[
+    M\mathbf r_i \approx \mathbf r_{\pi(i)}.
+\]
+The approximation is controlled by the distance tolerance \(\tau\).  Since a
+valid symmetry operation preserves element identity and distance environment,
+\(\pi(i)\) must lie in the same equivalence class as \(i\).  The mapping must be
+a bijection, so every atom is used exactly once.
+
+\subsection{Why \(\pi\) Alone Is Not Always Enough}
+
+For a rigid nonlinear molecule in a generic three-dimensional arrangement, the
+atom permutation often uniquely determines the operation.  However, planar
+molecules provide important counterexamples.
+
+Suppose the molecule lies in the \(xy\)-plane, so every atom has \(z_i=0\).  The
+mirror through the molecular plane is
+\[
+    \sigma_{xy}
+    =
+    \begin{bmatrix}
+    1 & 0 & 0\\
+    0 & 1 & 0\\
+    0 & 0 & -1
+    \end{bmatrix}.
+\]
+For any atom in the plane,
+\[
+    \sigma_{xy}\mathbf r_i=\mathbf r_i.
+\]
+Thus the mirror operation induces the identity atom permutation:
+\[
+    \pi(i)=i.
+\]
+The identity matrix \(I\) also induces the same atom permutation:
+\[
+    I\mathbf r_i=\mathbf r_i.
+\]
+Therefore the permutation \(\pi\) alone cannot distinguish the molecular-plane
+mirror from the identity operation.
+
+The determinant resolves this ambiguity:
+\[
+    \det I = +1,
+    \qquad
+    \det \sigma_{xy}=-1.
+\]
+The pair
+\[
+    (\pi,\det M)
+\]
+therefore separates proper and improper operations that may induce the same
+atom mapping on planar or otherwise geometrically special molecules.
+
+\subsection{Why the Matrix Itself Is Not Used as the Primary Identity}
+
+In exact mathematical geometry, a symmetry operation has a well-defined matrix.
+However, the algorithm operates on floating-point molecular coordinates, often
+from relaxed structures that are only approximately symmetric.  Candidate axes
+are computed from quantities such as
+\[
+    \mathbf r_i+\mathbf r_j,\qquad
+    \mathbf r_i-\mathbf r_j,\qquad
+    \mathbf r_i\times\mathbf r_j,
+\]
+or from eigenvectors of \(T\).  These directions are floating-point vectors.
+
+Two different candidate constructions may describe the same symmetry axis but
+with slightly different numerical components.  For example, two candidate axes
+that should both represent the \(y\)-axis may be
+\[
+    \mathbf a_1=(10^{-6},0.999999,2\times10^{-6}),
+    \qquad
+    \mathbf a_2=(0,1,-10^{-6}).
+\]
+Even with the same exact trial angle \(\theta=\pi\), the matrices
+\[
+    R(\mathbf a_1,\pi)
+    \qquad\text{and}\qquad
+    R(\mathbf a_2,\pi)
+\]
+will not be bitwise identical.  If matrices were used as operation identities,
+one would need a matrix tolerance \(\epsilon\) and compare
+\[
+    \lVert M_1-M_2\rVert < \epsilon.
+\]
+Choosing \(\epsilon\) is delicate: too small a tolerance can split one operation
+into several duplicates, while too large a tolerance can merge distinct
+operations.
+
+By contrast, once a trial operation passes the atom-matching test, its
+permutation \(\pi\) is discrete integer data.  Comparing two permutations is an
+exact comparison of integer arrays.  The determinant adds the missing parity
+information.  Hence \((\pi,\det M)\) is used as the computational identity of an
+operation.
+
+\subsection{Deduplication as an Exact Integer Operation}
+
+During candidate testing, the algorithm may rediscover the same symmetry
+operation multiple times.  Deduplication means removing repeated operations.
+
+If the operation identity were a floating-point matrix, deduplication would
+require a numerical matrix comparison.  With the identity \((\pi,\det M)\),
+deduplication becomes exact.  For example, a permutation can be stored as an
+integer array:
+\[
+    \pi=[3,4,1,2],
+\]
+meaning
+\[
+    1\mapsto3,\qquad
+    2\mapsto4,\qquad
+    3\mapsto1,\qquad
+    4\mapsto2.
+\]
+Two operations are duplicates if and only if their integer arrays are identical
+and their determinants are identical.  No floating-point tolerance is involved.
+This is what is meant by an ``integer operation'' in this context.
+
+\subsection{Group Closure and Permutation Composition}
+
+The molecular symmetry operations form a group.  This means:
+\begin{enumerate}[label=(\alph*)]
+    \item the identity operation is present;
+    \item every operation has an inverse;
+    \item the product of any two operations is also an operation;
+    \item operation multiplication is associative.
+\end{enumerate}
+The closure condition is especially useful algorithmically.  If \(g\) and \(h\)
+are known symmetry operations, then their product \(gh\) must also be present.
+
+Let
+\[
+    g=(\pi_g,\det g),
+    \qquad
+    h=(\pi_h,\det h).
+\]
+If \(h\) acts first and \(g\) acts second, then the product operation \(gh\)
+maps atom \(i\) according to
+\[
+    \pi_{gh}(i)=\pi_g(\pi_h(i)).
+\]
+This is called permutation composition.  The determinant of the product is
+\[
+    \det(gh)=\det(g)\det(h).
+\]
+Thus group multiplication can be carried out using only integer permutation
+composition and multiplication of signs \(\pm1\).
+
+As a concrete example, suppose
+\[
+    \pi_h=[2,1,3],
+    \qquad
+    \pi_g=[1,3,2].
+\]
+Then
+\[
+    \pi_{gh}(1)=\pi_g(\pi_h(1))=\pi_g(2)=3,
+\]
+\[
+    \pi_{gh}(2)=\pi_g(\pi_h(2))=\pi_g(1)=1,
+\]
+\[
+    \pi_{gh}(3)=\pi_g(\pi_h(3))=\pi_g(3)=2.
+\]
+Therefore
+\[
+    \pi_{gh}=[3,1,2].
+\]
+
+\subsection{The Group Multiplication Table}
+
+After the operation set is closed, one can store a multiplication table.  If the
+operations are indexed as
+\[
+    g_1,g_2,\dots,g_m,
+\]
+then the multiplication table records, for each pair \((i,j)\), the index \(k\)
+such that
+\[
+    g_i g_j = g_k.
+\]
+This table is useful for:
+\begin{itemize}
+    \item verifying that the detected operation set is closed;
+    \item generating missing operations during closure;
+    \item classifying the point group;
+    \item checking later whether a crystallographic site-symmetry group is a
+    subgroup of the molecular symmetry group after orientation.
+\end{itemize}
+
+\section{Nonlinear and Linear Molecules}
+
+\subsection{Definitions and Examples}
+
+A molecule is nonlinear if its atoms are not all collinear.  Examples include
+water, ammonia, methane, benzene, naphthalene, and PTCDA.
+
+A molecule is linear if all atoms lie on a single straight line.  Examples
+include carbon dioxide, acetylene, hydrogen cyanide, and ideal diatomic
+molecules such as \(\mathrm{N}_2\) and \(\mathrm{O}_2\).
+
+In terms of the gyration tensor, an ideal linear molecule has molecular spread
+only along one direction.  Therefore two eigenvalues of \(T\) are zero, or
+nearly zero for numerical geometries.  A nonlinear molecule has at least two
+independent directions of atomic spread.
+
+\subsection{Why Linear Molecules Need Separate Handling}
+
+The finite point-group pipeline assumes that the molecule has a finite set of
+symmetry operations.  This is true for nonlinear molecular point groups.
+
+An ideal linear molecule has continuous rotational symmetry about the molecular
+axis.  For example, an ideal \(\mathrm{CO}_2\) molecule can be rotated by any
+angle \(\theta\in[0,2\pi)\) about its molecular axis without changing the
+molecule.  This is not a finite set of rotations such as \(C_2\), \(C_3\),
+\(C_4\), or \(C_6\).  It is an infinite continuous family.
+
+Linear molecules are therefore classified separately as
+\[
+    C_{\infty v}
+    \qquad\text{or}\qquad
+    D_{\infty h},
+\]
+depending on the presence of inversion or equivalent end-exchange symmetry.
+They do not fit the general procedure of enumerating a finite list of candidate
+rotation orders and building a finite group multiplication table.
+
+\section{Orthogonal Procrustes Matrix Refinement}
+
+\subsection{The Refinement Problem}
+
+After a trial operation has been accepted, the algorithm knows the atom mapping
+\(\pi\).  The raw trial matrix may have been generated from a noisy
+floating-point axis.  Matrix refinement replaces that raw matrix with the
+orthogonal matrix that best fits the accepted atom mapping.
+
+Let
+\[
+    \mathbf x_i=\mathbf r_i
+    \qquad\text{and}\qquad
+    \mathbf y_i=\mathbf r_{\pi(i)}.
+\]
+Here:
+\begin{itemize}
+    \item \(\mathbf x_i\) is the original centered coordinate of atom \(i\);
+    \item \(\mathbf y_i\) is the centered coordinate of the atom assigned to
+    atom \(i\) by the accepted permutation \(\pi\);
+    \item \(M\) is the orthogonal matrix to be refined.
+\end{itemize}
+The orthogonal Procrustes problem is
+\[
+    M^\star
+    =
+    \arg\min_{M^{\T}M=I,\ \det M=d}
+    \sum_{i=1}^{N}
+    \lVert M\mathbf x_i-\mathbf y_i\rVert^2,
+\]
+where \(d\in\{+1,-1\}\) is the desired determinant.  The determinant constraint
+preserves whether the operation is proper (\(d=+1\)) or improper (\(d=-1\)).
+
+\subsection{Cross-Covariance Matrix}
+
+Define the cross-covariance matrix
+\[
+    H
+    =
+    \sum_{i=1}^{N}
+    \mathbf y_i\mathbf x_i^{\T}.
+\]
+The matrix \(H\) is \(3\times3\).  It measures how the target coordinates
+\(\mathbf y_i\) correlate with the source coordinates \(\mathbf x_i\).  The
+normalization factor sometimes used in statistical covariance is irrelevant
+here, because multiplying \(H\) by a positive scalar does not change the
+maximizing orthogonal matrix.
+
+\subsection{Singular Value Decomposition}
+
+The singular value decomposition of \(H\) is
+\[
+    H=U\Sigma V^{\T},
+\]
+where:
+\begin{itemize}
+    \item \(U\) is a \(3\times3\) orthogonal matrix;
+    \item \(V\) is a \(3\times3\) orthogonal matrix;
+    \item \(\Sigma=\operatorname{diag}(\sigma_1,\sigma_2,\sigma_3)\);
+    \item \(\sigma_1\ge\sigma_2\ge\sigma_3\ge0\) are the singular values.
+\end{itemize}
+The refined matrix has the form
+\[
+    M^\star
+    =
+    UDV^{\T},
+\]
+where
+\[
+    D=
+    \operatorname{diag}
+    \left(1,1,d\,\det(UV^{\T})\right).
+\]
+This choice guarantees
+\[
+    \det M^\star=d.
+\]
+
+\subsection{Derivation of the Procrustes Solution}
+
+Start from the objective function
+\[
+    F(M)
+    =
+    \sum_i
+    \lVert M\mathbf x_i-\mathbf y_i\rVert^2.
+\]
+Expanding one term gives
+\[
+\begin{aligned}
+    \lVert M\mathbf x_i-\mathbf y_i\rVert^2
+    &=
+    (M\mathbf x_i-\mathbf y_i)^{\T}
+    (M\mathbf x_i-\mathbf y_i)\\
+    &=
+    \mathbf x_i^{\T}M^{\T}M\mathbf x_i
+    -
+    \mathbf x_i^{\T}M^{\T}\mathbf y_i
+    -
+    \mathbf y_i^{\T}M\mathbf x_i
+    +
+    \mathbf y_i^{\T}\mathbf y_i.
+\end{aligned}
+\]
+The two cross terms are equal because they are scalar transposes of one another:
+\[
+    \mathbf x_i^{\T}M^{\T}\mathbf y_i
+    =
+    \left(\mathbf x_i^{\T}M^{\T}\mathbf y_i\right)^{\T}
+    =
+    \mathbf y_i^{\T}M\mathbf x_i.
+\]
+Since \(M^{\T}M=I\),
+\[
+    \mathbf x_i^{\T}M^{\T}M\mathbf x_i
+    =
+    \mathbf x_i^{\T}\mathbf x_i.
+\]
+Therefore
+\[
+    F(M)
+    =
+    C
+    -
+    2\sum_i\mathbf y_i^{\T}M\mathbf x_i,
+\]
+where
+\[
+    C=
+    \sum_i
+    \left(
+    \lVert\mathbf x_i\rVert^2+
+    \lVert\mathbf y_i\rVert^2
+    \right)
+\]
+does not depend on \(M\).  Minimizing \(F(M)\) is therefore equivalent to
+maximizing
+\[
+    \sum_i\mathbf y_i^{\T}M\mathbf x_i.
+\]
+Using
+\[
+    H=\sum_i\mathbf y_i\mathbf x_i^{\T},
+\]
+we can write
+\[
+    \sum_i\mathbf y_i^{\T}M\mathbf x_i
+    =
+    \operatorname{tr}(MH^{\T}).
+\]
+With \(H=U\Sigma V^{\T}\), we have \(H^{\T}=V\Sigma U^{\T}\).  Hence
+\[
+\begin{aligned}
+    \operatorname{tr}(MH^{\T})
+    &=
+    \operatorname{tr}(MV\Sigma U^{\T})\\
+    &=
+    \operatorname{tr}(U^{\T}MV\Sigma),
+\end{aligned}
+\]
+where the second equality uses cyclic invariance of the trace.
+
+Define
+\[
+    A=U^{\T}MV.
+\]
+Since \(U\), \(M\), and \(V\) are orthogonal, \(A\) is also orthogonal.  The
+problem becomes
+\[
+    \max_{A^{\T}A=I,\ \det A=\delta}
+    \operatorname{tr}(A\Sigma),
+\]
+where
+\[
+    \delta=d\,\det(UV^{\T}).
+\]
+The determinant relation follows from
+\[
+    \det A
+    =
+    \det(U^{\T})\det(M)\det(V)
+    =
+    d\,\det(U)\det(V)
+    =
+    d\,\det(UV^{\T}).
+\]
+
+Because \(\Sigma\) is diagonal,
+\[
+    \operatorname{tr}(A\Sigma)
+    =
+    \sigma_1 A_{11}+\sigma_2 A_{22}+\sigma_3 A_{33}.
+\]
+For an orthogonal matrix, the entries cannot exceed one in magnitude.  The
+maximum is obtained by aligning the largest singular values with positive
+diagonal entries.  If \(\delta=+1\), the best choice is
+\[
+    A^\star=I.
+\]
+If \(\delta=-1\), one sign must be negative; because
+\(\sigma_3\) is the smallest singular value, the least costly negative sign is
+placed on the third axis:
+\[
+    A^\star=\operatorname{diag}(1,1,-1).
+\]
+Both cases are written compactly as
+\[
+    A^\star
+    =
+    D
+    =
+    \operatorname{diag}(1,1,\delta).
+\]
+Since \(A=U^{\T}MV\), this gives
+\[
+    U^{\T}M^\star V=D,
+\]
+and therefore
+\[
+    M^\star=UDV^{\T}.
+\]
+Substituting the definition of \(\delta\) yields
+\[
+    \boxed{
+    M^\star
+    =
+    U
+    \operatorname{diag}
+    \left(1,1,d\,\det(UV^{\T})\right)
+    V^{\T}
+    }.
+\]
+This is the least-squares best orthogonal matrix with the prescribed
+determinant for the accepted atom mapping.
+
+\subsection{Why Refinement Is Needed}
+
+The raw trial matrix is generated from candidate axes and trial angles.  The
+axis may be slightly noisy because it is computed from floating-point molecular
+coordinates.  Once the atom mapping \(\pi\) is known, the Procrustes step uses
+all atoms simultaneously to compute the best orthogonal matrix consistent with
+that mapping.  The result is a cleaner operation matrix, while the operation
+identity remains the exact discrete pair \((\pi,\det M)\).
+
+\section{Recording Symmetry Elements}
+
+\subsection{Operation Identity Versus Geometric Metadata}
+
+The pair \((\pi,\det M)\) is useful for exact computation, but it is not a full
+human-readable geometric description.  Therefore each accepted operation should
+store both:
+\begin{enumerate}[label=(\alph*)]
+    \item the computational identity \((\pi,\det M)\);
+    \item geometric metadata extracted from the refined matrix \(M^\star\).
+\end{enumerate}
+The stored data include:
+\begin{itemize}
+    \item the refined Cartesian matrix \(M^\star\);
+    \item the atom permutation \(\pi\);
+    \item the determinant \(\det M^\star\);
+    \item the maximum atom-matching deviation;
+    \item a classified operation type, such as \(E\), \(i\), \(C_n\),
+    \(\sigma\), or \(S_n\).
+\end{itemize}
+
+\subsection{Proper Rotation Elements}
+
+For a proper rotation,
+\[
+    \det M^\star=+1.
+\]
+The rotation angle \(\theta\) can be obtained from the trace:
+\[
+    \operatorname{tr}(M^\star)=1+2\cos\theta,
+\]
+so
+\[
+    \cos\theta=
+    \frac{\operatorname{tr}(M^\star)-1}{2}.
+\]
+The rotation axis \(\mathbf a\) is the eigenvector with eigenvalue \(1\):
+\[
+    M^\star\mathbf a=\mathbf a.
+\]
+If
+\[
+    \theta\approx\frac{2\pi}{n},
+\]
+the element is recorded as a \(C_n\) axis along \(\mathbf a\).
+
+\subsection{Mirror, Inversion, and Improper Elements}
+
+For a pure mirror operation, the eigenvalues are
+\[
+    1,\quad 1,\quad -1.
+\]
+The mirror normal \(\mathbf n\) is the eigenvector with eigenvalue \(-1\):
+\[
+    M^\star\mathbf n=-\mathbf n.
+\]
+The mirror plane is
+\[
+    \{\mathbf r:\mathbf n^{\T}\mathbf r=0\}.
+\]
+
+The inversion operation is identified by
+\[
+    M^\star=-I.
+\]
+It is recorded as inversion through the molecular centroid, which is the origin
+of the centered coordinate system.
+
+An improper rotation is recorded as an \(S_n\) element.  It has determinant
+\(-1\) and can be interpreted as a proper rotation about an axis followed by
+reflection through the plane perpendicular to that axis.  The axis and order are
+obtained from the refined matrix and, when useful, from the trial operation that
+produced the accepted atom mapping.
+
+\section{Classifying the Point Group}
+
+After all valid operations have been found, deduplicated, and closed under
+group multiplication, the point group symbol is determined from the inventory of
+symmetry elements.
+
+\subsection{Linear Molecules}
+
+Linear molecules are classified first, because they have continuous rotational
+symmetry and do not fit the finite-operation classification:
+\[
+    C_{\infty v}
+    \qquad\text{or}\qquad
+    D_{\infty h}.
+\]
+
+\subsection{Cubic Families}
+
+For nonlinear molecules, the algorithm first checks for multiple high-order
+proper rotation axes.  If there are two or more distinct axes of order at least
+three, the molecule belongs to a cubic family:
+\[
+    T,\quad T_d,\quad T_h,\quad O,\quad O_h,\quad I,\quad I_h.
+\]
+The distinction is made from the set of rotation orders and the presence or
+absence of inversion and mirror-type improper elements.
+
+\subsection{\(C_n\) and \(D_n\) Families}
+
+If the molecule is not cubic, the highest-order proper rotation axis is chosen
+as the principal axis.  Let its order be \(n\).
+
+If there are \(n\) two-fold axes perpendicular to the principal axis, the group
+belongs to the \(D_n\) family:
+\[
+    D_n,\qquad D_{nh},\qquad D_{nd}.
+\]
+The suffix is determined by improper elements:
+\begin{itemize}
+    \item a horizontal mirror plane gives \(D_{nh}\);
+    \item suitable diagonal mirror planes give \(D_{nd}\);
+    \item neither gives \(D_n\).
+\end{itemize}
+
+If there are not \(n\) perpendicular \(C_2\) axes, the group belongs to the
+\(C_n\) family:
+\[
+    C_n,\qquad C_{nv},\qquad C_{nh},\qquad S_{2n}.
+\]
+The suffix is again determined by improper elements:
+\begin{itemize}
+    \item vertical mirror planes give \(C_{nv}\);
+    \item a horizontal mirror plane gives \(C_{nh}\);
+    \item an improper axis without the corresponding proper-axis structure gives
+    an \(S_{2n}\) group;
+    \item no relevant improper element gives \(C_n\).
+\end{itemize}
+
+\subsection{No Nontrivial Proper Rotation}
+
+If no nontrivial proper rotation axis is present, the remaining possibilities
+are:
+\[
+    C_s,\qquad C_i,\qquad C_1.
+\]
+Specifically:
+\begin{itemize}
+    \item mirror only gives \(C_s\);
+    \item inversion only gives \(C_i\);
+    \item identity only gives \(C_1\).
+\end{itemize}
+
+For the planar molecules expected in the example systems, such as naphthalene
+and PTCDA, the expected classification is \(D_{2h}\): they have three mutually
+perpendicular \(C_2\) axes together with inversion and mirror symmetry.
 
 \end{document}
