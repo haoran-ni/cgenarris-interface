@@ -668,10 +668,15 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 		while( counter < spg_num_structures )
 		{
 			int verdict = 0; //for structure check
-			int i = 0; 		 //counts attempts for spg
+			int i = 0; 		 //drives the volume resampling cadence only
+			long failed_attempts = 0; //consecutive failed attempts since last success
 			//attempts for an spg.
 			stop_flag = 0;
-			for(; i < max_attempts; i = i + BATCH_SIZE)
+			//Loop control uses failed_attempts. i is reset to 0 on success below,
+			//but the for-increment immediately advances it again, so i can never
+			//record that reset. i keeps its original update rule because it drives
+			//the volume resampling cadence, and with it the random number stream.
+			for(; failed_attempts < max_attempts; i = i + BATCH_SIZE)
 			{
 				int j = 0;
 				success_flag = 0;
@@ -795,19 +800,25 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 				MPI_Bcast(&success_flag, 1, MPI_INT, 0, world_comm);
 				MPI_Bcast(&stop_flag, 1, MPI_INT, 0, world_comm);
 
+				//driven by the broadcast success_flag and advanced by the constant
+				//BATCH_SIZE, so failed_attempts is identical on every rank
 				if (success_flag)
 				{
+					failed_attempts = 0;
 					i = 0;
 					do {volume = normal_dist_ab(volume_mean, volume_std);} while(volume < 0.1);
 				}
+				else
+					failed_attempts += BATCH_SIZE;
 				if (stop_flag)
 					break;
 
 
 			}//end of attempt loop
 
-			//if max limit is reached if some rank hit the limit
-			if (i >= max_attempts)
+			//give up only if max_attempts consecutive attempts all failed. Exiting
+			//because the quota was filled (stop_flag) is not a failure.
+			if (!stop_flag && failed_attempts >= max_attempts)
 			{
 				do {volume = normal_dist_ab(volume_mean, volume_std);} while(volume < 0.1);
 				if (my_rank== 0)
