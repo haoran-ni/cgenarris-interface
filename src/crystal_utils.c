@@ -451,7 +451,6 @@ void combine_close_molecules(crystal* xtal)
     int total_atoms = Z * N;
     //to count the number of molecules after duplicate removal
     int molecule_counter = 0;
-    int same = 0;
     //for partitioning molecules into different clusters
     int partition_list[Z];
     int averaging_list[Z];
@@ -480,6 +479,11 @@ void combine_close_molecules(crystal* xtal)
         if(partition_list[i/N] != -1)
             continue;
 
+        // Whether this molecule has an overlap match in this iteration.
+        // Must reset per-iteration; a stale `1` from an earlier match would
+        // send unmatched molecules into the averaging branch with an empty
+        // averaging_list and divide tempx by len=0, producing Inf coords.
+        int same = 0;
         float com1[3] = {0,0,0};
         compute_molecule_COM(*xtal, com1, i);
         //print_vec3(com1);
@@ -551,7 +555,7 @@ void combine_close_molecules(crystal* xtal)
                 tempx[molecule_counter*N + z] = xtal->Xcord[i+z];
                 tempy[molecule_counter*N + z] = xtal->Ycord[i+z];
                 tempz[molecule_counter*N + z] = xtal->Zcord[i+z];
-                tempatom[molecule_counter*N +z] = xtal->atoms[i+z];
+                tempatom[2*(molecule_counter*N +z)] = xtal->atoms[2*(i+z)];
                 tempatom[2*(molecule_counter*N +z)+1] = xtal->atoms[2*(i+z)+1];
             }
         }
@@ -658,10 +662,14 @@ void average_positions_using_list(float     *tempx,
 int detect_spg_using_spglib(crystal* xtal)
 {
     float tol = 1e-3;
-    //print_crystal(xtal);
+    int num_atoms_in_cell = xtal->Z * xtal-> num_atoms_in_molecule ;
+    if (num_atoms_in_cell < 1 || xtal->Xcord == NULL ||
+        xtal->Ycord == NULL || xtal->Zcord == NULL || xtal->atoms == NULL)
+    {
+        return 0;
+    }
     convert_xtal_to_fractional(xtal);
     //variable declarations
-    int num_atoms_in_cell = xtal->Z * xtal-> num_atoms_in_molecule ;
     int types[num_atoms_in_cell];
     double positions[num_atoms_in_cell][3];
     char atom[num_atoms_in_cell*2];
@@ -782,36 +790,4 @@ void copy_xtal(crystal* xtal1, crystal* xtal2)
         xtal1->atoms[2*i+1] = xtal2->atoms[2*i+1];
     }
 
-}
-
-int is_equal_xtal(crystal* xtal1, crystal* xtal2, float ftol)
-{
-
-    if(xtal1->Z != xtal2->Z)
-        return 0;
-
-    if(xtal1->num_atoms_in_molecule !=  xtal2->num_atoms_in_molecule)
-        return 0;
-
-    for(int i = 0; i < 3; i++)
-        for(int j = 0; j < 3; j++)
-        {
-            int result = are_equal_floats(xtal1->lattice_vectors[i][j],
-                                          xtal2->lattice_vectors[i][j],
-                                          ftol);
-            if(!result)
-                return 0;
-        }
-
-    int total_atoms = xtal1->num_atoms_in_molecule * xtal1->Z;
-    for(int i = 0; i < total_atoms; i++)
-    {
-        int result = are_equal_floats(xtal1->Xcord[i], xtal2->Xcord[i], ftol);
-        result += are_equal_floats(xtal1->Ycord[i], xtal2->Ycord[i], ftol);
-        result += are_equal_floats(xtal1->Zcord[i], xtal2->Zcord[i], ftol);
-        if(result != 3)
-            return 0;
-    }
-
-    return 1;
 }
