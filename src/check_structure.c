@@ -9,7 +9,6 @@
 #include "algebra.h"
 
 #define CONSTANT_TOL 0.001
-#define MAXVDW 2.1
 
 #define NORM2(a,b) ( (a[0]-b[0])*(a[0]-b[0]) +\
                      (a[1]-b[1])*(a[1]-b[1]) +\
@@ -21,7 +20,8 @@
 static void convert_atom2atom_vdw(char *atom,float *atom_vdw, int num_atoms);
 static int fast_screener_vdw(crystal xtal, float *vdw_matrix);
 static int check_pairwise_if_mol_close( float *vdw_matrix, int total_atoms,
-    xtal_molecule_pair *mol_pair, float max_dist);
+    xtal_molecule_pair *mol_pair, float max_dist, float max_cutoff);
+static float max_vdw_cutoff(float *vdw_matrix, int total_atoms);
 static int check_pairwise(float *vdw_matrix , int total_atoms,
     xtal_molecule_pair *mol_pair, float l_disp[3]);
 static int check_lower_triangular(float L[3][3]);
@@ -166,6 +166,10 @@ int structure_checker(crystal *xtal,
         //printf("i = %d , com  === %f, %f, %f\n",i, com[3*i], com[3*i +1], com[3*i+2] );
     }
 
+    // largest pairwise cutoff; sets how far apart two molecules can be and
+    // still touch
+    float max_cutoff = max_vdw_cutoff(vdw_matrix, total_atoms);
+
     // Loop over molecules in a unit cell
     for(int i = 0; i < num_mols; i++)
     {
@@ -180,7 +184,8 @@ int structure_checker(crystal *xtal,
                 .num_atoms1 = num_atoms_in_molecule[i], .index2 = mol_id[j],
                 .num_atoms2 = num_atoms_in_molecule[j]};
 
-            int verdict = check_pairwise_if_mol_close(vdw_matrix, total_atoms, &mol_pair, max_dist);
+            int verdict = check_pairwise_if_mol_close(vdw_matrix, total_atoms, &mol_pair,
+                max_dist, max_cutoff);
 
             if (!verdict)
                 return 0 ;
@@ -260,7 +265,7 @@ static int fast_screener_vdw(crystal xtal, float *vdw_matrix)
     // crystal may have had garbage/NaN coords) and the cost is negligible.
     float mol_len = find_mol_len(xtal.Xcord, xtal.Ycord, xtal.Zcord, N);
 
-    float small_number = MAXVDW;
+    float small_number = max_vdw_cutoff(vdw_matrix, total_atoms);
 
     for(int i = 0; i < total_atoms; i += N)
     {
@@ -303,7 +308,7 @@ static int fast_screener_vdw(crystal xtal, float *vdw_matrix)
 
 // Core sphere decoder
 static int check_pairwise_if_mol_close( float *vdw_matrix,
-    int total_atoms, xtal_molecule_pair *mol_pair, float max_dist)
+    int total_atoms, xtal_molecule_pair *mol_pair, float max_dist, float max_cutoff)
 {
     // Unpack
     float *com1 = mol_pair->com1;
@@ -312,21 +317,27 @@ static int check_pairwise_if_mol_close( float *vdw_matrix,
     int id1 = mol_pair->index1;
     int id2 = mol_pair->index2;
 
+    // max_dist/2 is the sum of the two molecules' largest COM-atom
+    // distances, so their atoms can only be within max_cutoff of each other
+    // if the COMs are closer than reach. The image search must cover reach.
+    float reach = max_dist/2 + max_cutoff;
+    float search = maxof(max_dist, reach);
+
     float p[3] = {com1[0] - com2[0], com1[1] - com2[1], com1[2] - com2[2]} ;
-    int zmax = maxof( fabs(p[2] + max_dist), fabs(p[2] - max_dist) )/ fabs(L[2][2]) + 3;
+    int zmax = maxof( fabs(p[2] + search), fabs(p[2] - search) )/ fabs(L[2][2]) + 3;
 
     for(int k = zseq_generator(1); k < zmax; k = zseq_generator(0))
     {
         // update max_dist
         float loss1 = (p[2] - k*L[2][2])*(p[2] - k*L[2][2]);
-        float max_dist_sqr = max_dist*max_dist - loss1;
+        float max_dist_sqr = search*search - loss1;
         if (max_dist_sqr < 0)
             continue;
         float max_dist_z = sqrt(max_dist_sqr);
         //max_dist_z = max_dist;
         // find ymax
-        int ymax =  maxof( fabs(p[2] - L[2][1]*k + max_dist_z),
-             fabs(p[2] - L[2][1]*k - max_dist_z) ) / fabs(L[1][1]) + 3;
+        int ymax =  maxof( fabs(p[1] - L[2][1]*k + max_dist_z),
+             fabs(p[1] - L[2][1]*k - max_dist_z) ) / fabs(L[1][1]) + 3;
         //printf("ymax = %d\n", ymax );
 
         for(int j = yseq_generator(1); j < ymax; j = yseq_generator(0))
@@ -359,7 +370,7 @@ static int check_pairwise_if_mol_close( float *vdw_matrix,
 
                 // Two molecules considered are within the search radius then
                 // test if the molecules are too close
-                if (NORMSQR(dist) < (max_dist/2 + MAXVDW)*(max_dist/2 + MAXVDW))
+                if (NORMSQR(dist) < reach*reach)
                 {
                     /*
                     printf("i, j, k = %d, %d, %d dist = %f %f %f\n",i, j, k, dist[0], dist[1], dist[2] );
@@ -377,6 +388,16 @@ static int check_pairwise_if_mol_close( float *vdw_matrix,
         }
     }
     return 1;
+}
+
+// Largest entry of the total_atoms x total_atoms cutoff matrix
+static float max_vdw_cutoff(float *vdw_matrix, int total_atoms)
+{
+    float max_cutoff = 0;
+    for(int i = 0; i < total_atoms*total_atoms; i++)
+        if (vdw_matrix[i] > max_cutoff)
+            max_cutoff = vdw_matrix[i];
+    return max_cutoff;
 }
 
 static int check_pairwise(float *vdw_matrix , int total_atoms,
