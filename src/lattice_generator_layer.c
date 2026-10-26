@@ -229,8 +229,11 @@ int generate_substrate_lattice_combs(int *all_substrate_combo, float lattice_vec
 
 					}
 
-					//if angle is not between 30 and 50, skip
-					if (angle < min_angle * 180/PI || angle > max_angle * 180/PI)
+					//if angle is not between min_angle and max_angle, skip.
+					//Written so that NaN is also skipped: for long, nearly
+					//parallel vectors the float cosine can round above 1,
+					//acos returns NaN, and NaN fails every comparison.
+					if (!(angle >= min_angle * 180/PI && angle <= max_angle * 180/PI))
 					{
 						continue;
 					}
@@ -340,7 +343,9 @@ void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, i
 
 		}
 	
-	//choose a combo based on lattice type of spg
+	//choose a combo based on lattice type of spg. Each loop resamples while
+	//the combo is rejected; isnan(gamma_in_deg) is listed explicitly because
+	//NaN fails every other comparison and would otherwise be accepted.
 	if (spg <=2)  //oblique_triclinic
 	{
 	  //printf("the layer group is oblique_triclinic");
@@ -354,7 +359,7 @@ void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, i
 					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
 	    }
-	  while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length
+	  while (isnan(gamma_in_deg) || fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length
 	  	|| fabs(gamma_in_deg - 90) < epsilon || fabs(gamma_in_deg - 120) < epsilon ||
 	        new_area > (interface_area_mean + interface_area_std ) ||
 		new_area < (interface_area_mean - interface_area_std));
@@ -381,7 +386,7 @@ void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, i
 					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
-      while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
+      while (isnan(gamma_in_deg) || fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
 	     fabs(gamma_in_deg - 90) < epsilon || fabs(gamma_in_deg - 120) < epsilon ||
 	     new_area > (interface_area_mean + interface_area_std ) ||
 	     new_area < (interface_area_mean - interface_area_std));
@@ -408,7 +413,7 @@ void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, i
 				return;
         }
 
-          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
+          while (isnan(gamma_in_deg) || fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
 		 fabs(gamma_in_deg - 90) > epsilon ||
 	         new_area > (interface_area_mean + interface_area_std ) ||
 		 new_area < (interface_area_mean - interface_area_std));
@@ -436,7 +441,7 @@ void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, i
 				return;
         }
 
-          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
+          while (isnan(gamma_in_deg) || fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) < epsilon_length ||
 		 fabs(gamma_in_deg - 90) > epsilon ||
 	         new_area > (interface_area_mean + interface_area_std ) ||
 	  	 new_area < (interface_area_mean - interface_area_std));
@@ -461,7 +466,7 @@ void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, i
 					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
-          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
+          while (isnan(gamma_in_deg) || fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
 		 fabs(gamma_in_deg - 90) > epsilon ||
 	         new_area > (interface_area_mean + interface_area_std ) ||
 	         new_area < (interface_area_mean - interface_area_std));
@@ -487,7 +492,7 @@ void generate_layer_lattice(int *all_substrate_combo, crystal* random_crystal, i
 					&counter, random_crystal->lattice_vectors, out_epitaxy))
 				return;
         }
-          while (fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
+          while (isnan(gamma_in_deg) || fabs(norm_tmp_lattice_vec_a - norm_tmp_lattice_vec_b) >= epsilon_length ||
 		 fabs(gamma_in_deg - 120) > epsilon ||
 		 new_area > (interface_area_mean + interface_area_std ) ||
 	      	 new_area < (interface_area_mean - interface_area_std));
