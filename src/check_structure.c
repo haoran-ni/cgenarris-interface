@@ -19,8 +19,13 @@
 
 static void convert_atom2atom_vdw(char *atom,float *atom_vdw, int num_atoms);
 static int fast_screener_vdw(crystal xtal, float *vdw_matrix);
+static int check_structure_periodic(crystal xtal, float *vdw_matrix,
+    int dim1, int dim2, int periodic_c);
+static int structure_checker_periodic(crystal *xtal, float *vdw_matrix,
+    int total_atoms, int *mol_id, int num_mols, int periodic_c);
 static int check_pairwise_if_mol_close( float *vdw_matrix, int total_atoms,
-    xtal_molecule_pair *mol_pair, float max_dist, float max_cutoff);
+    xtal_molecule_pair *mol_pair, float max_dist, float max_cutoff,
+    int periodic_c);
 static float max_vdw_cutoff(float *vdw_matrix, int total_atoms);
 static int check_pairwise(float *vdw_matrix , int total_atoms,
     xtal_molecule_pair *mol_pair, float l_disp[3]);
@@ -64,6 +69,49 @@ int check_structure_with_vdw_matrix(crystal xtal,
     int dim1,
     int dim2)
 {
+    return check_structure_periodic(xtal, vdw_matrix, dim1, dim2, 1);
+}
+
+/*
+ * Same check for a 2D layer: molecules are compared with their images along
+ * a and b only. The c vector of a layer is not a lattice translation, so its
+ * images are not neighbours and must not reject the layer.
+ */
+int check_layer_structure_with_vdw_matrix(crystal xtal,
+    float *vdw_matrix,
+    int dim1,
+    int dim2)
+{
+    return check_structure_periodic(xtal, vdw_matrix, dim1, dim2, 0);
+}
+
+/*
+ * Assume lattice to be lower triangular in row major form
+ * More generalized function designed for co-crystals
+ */
+int structure_checker(crystal *xtal,
+    float *vdw_matrix,
+    int total_atoms,
+    int *mol_id,
+    int num_mols
+    )
+{
+    return structure_checker_periodic(xtal, vdw_matrix, total_atoms,
+                                      mol_id, num_mols, 1);
+}
+
+
+
+
+// Private functions to support the above functions.
+
+// periodic_c = 1: 3D crystal; 0: layer, periodic along a and b only
+static int check_structure_periodic(crystal xtal,
+    float *vdw_matrix,
+    int dim1,
+    int dim2,
+    int periodic_c)
+{
     int total_atoms = xtal.Z * xtal.num_atoms_in_molecule;
     int mol_id[xtal.Z];
 
@@ -90,24 +138,22 @@ int check_structure_with_vdw_matrix(crystal xtal,
         //printf("mol_id = %d\n", mol_id[i]);
     }
 
-    return structure_checker(
+    return structure_checker_periodic(
                              &xtal,
                              vdw_matrix,
                              total_atoms,
                              mol_id,
-                             xtal.Z);
+                             xtal.Z,
+                             periodic_c);
 
 }
 
-/*
- * Assume lattice to be lower triangular in row major form
- * More generalized function designed for co-crystals
- */
-int structure_checker(crystal *xtal,
+static int structure_checker_periodic(crystal *xtal,
     float *vdw_matrix,
     int total_atoms,
     int *mol_id,
-    int num_mols
+    int num_mols,
+    int periodic_c
     )
 {
     //preliminary checks
@@ -185,7 +231,7 @@ int structure_checker(crystal *xtal,
                 .num_atoms2 = num_atoms_in_molecule[j]};
 
             int verdict = check_pairwise_if_mol_close(vdw_matrix, total_atoms, &mol_pair,
-                max_dist, max_cutoff);
+                max_dist, max_cutoff, periodic_c);
 
             if (!verdict)
                 return 0 ;
@@ -194,11 +240,6 @@ int structure_checker(crystal *xtal,
 
     return 1;
 }
-
-
-
-
-// Private functions to support the above functions.
 
 /* convert the atoms char array into vdw radii information for structure checking
  * uses Bondii radii. If you need to add/change vdw radii of an atom
@@ -308,7 +349,8 @@ static int fast_screener_vdw(crystal xtal, float *vdw_matrix)
 
 // Core sphere decoder
 static int check_pairwise_if_mol_close( float *vdw_matrix,
-    int total_atoms, xtal_molecule_pair *mol_pair, float max_dist, float max_cutoff)
+    int total_atoms, xtal_molecule_pair *mol_pair, float max_dist, float max_cutoff,
+    int periodic_c)
 {
     // Unpack
     float *com1 = mol_pair->com1;
@@ -325,6 +367,9 @@ static int check_pairwise_if_mol_close( float *vdw_matrix,
 
     float p[3] = {com1[0] - com2[0], com1[1] - com2[1], com1[2] - com2[2]} ;
     int zmax = maxof( fabs(p[2] + search), fabs(p[2] - search) )/ fabs(L[2][2]) + 3;
+    // A layer has no images along c: zseq_generator gives k = 0 only
+    if (!periodic_c)
+        zmax = 1;
 
     for(int k = zseq_generator(1); k < zmax; k = zseq_generator(0))
     {

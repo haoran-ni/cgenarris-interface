@@ -152,7 +152,7 @@ void apply_all_lg_symmetry_ops(crystal *xtal,
 	}
 	//printf("before bring all mol to first Z is : %d\n",(*xtal).Z);
 	//fflush(stdout);
-	bring_all_molecules_to_first_cell(xtal);
+	bring_all_molecules_to_layer_cell(xtal);
 	//printf("after bring all mol to first Z is : %d\n",(*xtal).Z);
 	xtal->num_atoms_in_molecule = mol->num_of_atoms;
 }

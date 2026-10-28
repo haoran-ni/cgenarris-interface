@@ -10,6 +10,7 @@ void remove_close_molecules(crystal* xtal);
 void remove_close_molecules_mirror_plane(crystal *xtal );
 void convert_xtal_to_fractional(crystal *xtal);
 void bring_all_molecules_to_first_cell(crystal *xtal);
+void bring_all_molecules_to_layer_cell(crystal *xtal);
 void convert_xtal_to_cartesian(crystal *xtal);
 void combine_close_molecules(crystal* xtal);
 void average_positions_using_list(float     *tempx,

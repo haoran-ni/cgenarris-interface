@@ -19,10 +19,12 @@ static float *read_vdw_matrix(const char *path, int *dim_out);
 
 int main(int argc, char **argv)
 {
-    if (argc != 4)
+    // Optional 4th argument "layer": check as a 2D layer (no images along c)
+    int layer = argc == 5 && strcmp(argv[4], "layer") == 0;
+    if (argc != 4 && !layer)
     {
         fprintf(stderr,
-            "Usage: %s <geometry.in> <vdw_matrix.txt> <geometry.out>\n",
+            "Usage: %s <geometry.in> <vdw_matrix.txt> <geometry.out> [layer]\n",
             argv[0]);
         return 2;
     }
@@ -52,8 +54,11 @@ int main(int argc, char **argv)
     printf("vdw_matrix dim vs total_atoms: %d vs %d %s\n",
         dim, total_atoms, dim == total_atoms ? "(match)" : "(MISMATCH)");
 
-    int verdict = check_structure_with_vdw_matrix(xtal, vdw_matrix, dim, dim);
-    printf("\nverdict = %d  ->  %s\n", verdict,
+    int verdict = layer
+        ? check_layer_structure_with_vdw_matrix(xtal, vdw_matrix, dim, dim)
+        : check_structure_with_vdw_matrix(xtal, vdw_matrix, dim, dim);
+    printf("\nmode = %s\n", layer ? "layer (a, b periodic)" : "crystal (a, b, c periodic)");
+    printf("verdict = %d  ->  %s\n", verdict,
         verdict ? "PASS (structure accepted)" : "FAIL (structure rejected)");
 
     free(vdw_matrix);

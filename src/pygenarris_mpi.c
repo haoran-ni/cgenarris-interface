@@ -733,7 +733,7 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 						continue;
 					}
 					//check if molecules are too close with sr
-					verdict = check_structure_with_vdw_matrix(*random_crystal, vdw_matrix, dim1, dim2);
+					verdict = check_layer_structure_with_vdw_matrix(*random_crystal, vdw_matrix, dim1, dim2);
 					//printf("I am after check_structure_with_vdw_matrix\n");
 					//fflush(stdout);
 										//if generation is successful

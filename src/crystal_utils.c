@@ -244,6 +244,41 @@ void bring_all_molecules_to_first_cell(crystal *xtal)
     convert_xtal_to_cartesian(xtal);
 }
 
+/*
+ * Layer version of bring_all_molecules_to_first_cell. Along a and b the COM
+ * goes to [0, 1) as before. c is not a lattice translation of a layer, so
+ * shifting one molecule by c changes the layer; the COM goes to the nearest
+ * integer instead, i.e. [-1/2, 1/2). Layer group operations map z to +z or
+ * -z, so a molecule and its z-flipped copies stay mirror images about z = 0,
+ * and molecules on z = 0 sites are no longer split to z = 0 and z = c by
+ * rounding noise.
+ */
+void bring_all_molecules_to_layer_cell(crystal *xtal)
+{
+    int N = xtal->num_atoms_in_molecule;
+    int Z = xtal->Z;
+
+    convert_xtal_to_fractional(xtal);
+    for(int i = 0; i < N*Z; i+=N)
+    {
+        float com[3] = {0,0,0};
+        compute_molecule_COM(*xtal,com,i);
+        float integer_part1 = floorf(com[0]);
+        float integer_part2 = floorf(com[1]);
+        float integer_part3 = floorf(com[2] + 0.5f);
+
+        for(int j = i; j < i + N; j++)
+        {
+            xtal->Xcord[j] -= integer_part1;
+            xtal->Ycord[j] -= integer_part2;
+            xtal->Zcord[j] -= integer_part3;
+        }
+
+    }
+
+    convert_xtal_to_cartesian(xtal);
+}
+
 void convert_xtal_to_cartesian(crystal *xtal)
 {
     float lattice_vectors_transpose[3][3];

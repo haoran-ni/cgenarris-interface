@@ -25,6 +25,10 @@ int check_structure_with_vdw_matrix(crystal random_crystal,
 	float *vdw_matrix,
 	int dim1,
 	int dim2);
+int check_layer_structure_with_vdw_matrix(crystal random_crystal,
+	float *vdw_matrix,
+	int dim1,
+	int dim2);
 
 //void vector_cpy(float A[], float B[][3], int index);
 float pdist(float T[3][3],
