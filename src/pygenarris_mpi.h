@@ -40,6 +40,10 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 	float lattice_vector_2d_from_geo[2][3],
         int vol_attempt,
         int random_seed,
+	int max_ds,
+	int max_df,
+	int max_interface_atoms,
+	int num_substrate_atoms,
 	MPI_Comm world_comm);
 
 void get_compatible_spg(

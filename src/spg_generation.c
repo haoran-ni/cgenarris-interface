@@ -165,8 +165,8 @@ int find_num_structure_for_spg(int num_structures, char spg_dist_type[10], int s
 
 int generate_layer_crystal(crystal* random_crystal, molecule* mol,float volume,
     float Z, float Zp_max, int spg, COMPATIBLE_SPG compatible_spg[],
-    int len_compatible_spg, int compatible_spg_index, float lattice_vector_2d[2][3],int *all_substrate_combo,
-    int num_combo,float interface_area_mean,float interface_area_std,int volume_multiplier,int SET_INTERFACE_AREA)
+    int len_compatible_spg, int compatible_spg_index,
+    const LAYER_LATTICE_LIST *lattice_list, int volume_multiplier)
 {
     //printf("I am in generate_crystal and Z is %f\n ",Z);
 
@@ -190,9 +190,8 @@ int generate_layer_crystal(crystal* random_crystal, molecule* mol,float volume,
     int hall_number;
     hall_number = spg;
 
-    generate_layer_lattice(all_substrate_combo, random_crystal, spg, max_angle, min_angle,
-                volume,lattice_vector_2d,num_combo,interface_area_mean,interface_area_std,
-                volume_multiplier,SET_INTERFACE_AREA);
+    generate_layer_lattice(lattice_list, random_crystal, spg, max_angle, min_angle,
+                volume, volume_multiplier);
     //printf("lg is %d and lattice vector is %f, %f, %f\n", spg, random_crystal->lattice_vectors[0][0],random_crystal->lattice_vectors[0][1]
     //,random_crystal->lattice_vectors[0][2]);
     //printf("I am after generate_lattice\n");

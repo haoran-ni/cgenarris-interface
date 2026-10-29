@@ -7,6 +7,7 @@ typedef struct
     float com_positions[3];
     float euler_angles[3];
     int epitaxy_matrix[4];
+    int film_matrix[4];
     float *Xcord;
     float *Ycord;
     float *Zcord;
@@ -78,6 +79,11 @@ Crystal structure
  - com_position is the position of the geometric center of the first molecule
 
  - euler_angles are the orientation of the first molecule wrt input molecule
+
+ - epitaxy_matrix (H_s) and film_matrix (H_f) are the 2x2 integer matrices,
+   stored row-major and acting on row lattice vectors, of the common
+   in-plane cell C = H_s S = H_f F of a layer. S is the substrate cell and
+   F the layer cell (the first two lattice vectors).
 */
 
 

@@ -5,6 +5,7 @@
 #define MAX_ORDER 16
 
 #include "crystal.h"
+#include "lattice_generator_layer.h"
 
 //for storing allowed spacegroup and position
 typedef struct
@@ -43,8 +44,8 @@ int generate_crystal(crystal* random_crystal, molecule* mol,float volume,
 
 int generate_layer_crystal(crystal* random_crystal, molecule* mol,float volume,
 	float Z, float Zp_max, int spg, COMPATIBLE_SPG compatible_spg[],
-	int len_compatible_spg, int compatible_spg_index, float lattice_vector_2d[2][3],int *all_substrate_combo,
-	int num_combo,float interface_area_mean,float interface_area_std,int volume_multiplier,int SET_INTERFACE_AREA);
+	int len_compatible_spg, int compatible_spg_index,
+	const LAYER_LATTICE_LIST *lattice_list, int volume_multiplier);
 
 int find_num_structure_for_spg(int num_structures, char spg_dist_type[10], int spg, int Z);
 

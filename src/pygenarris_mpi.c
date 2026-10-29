@@ -452,6 +452,10 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 	float lattice_vector_2d_from_geo[2][3],
     int vol_attempt,
     int random_seed,
+	int max_ds,
+	int max_df,
+	int max_interface_atoms,
+	int num_substrate_atoms,
 	MPI_Comm world_comm)
 {
 	float Zp_max=1;
@@ -595,11 +599,60 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 	random_crystal->num_atoms_in_molecule = mol->num_of_atoms;
 	int total_atoms = mol->num_of_atoms * Z;
 
-	//initialize an array to store substrate combos
-	int max_num_combo = 100000000;
-	int *all_substrate_combo= (int *) malloc(max_num_combo * 4 * sizeof (int));   //max 100000000 combinations
-	int num_combo = generate_substrate_lattice_combs(all_substrate_combo,lattice_vector_2d_from_geo,volume,
-							 MAX_ANGLE,MIN_ANGLE);
+	//film cells F with a common cell C = H_s S = H_f F. The area window
+	//applies to F: by default the legacy cap of half this rank's first
+	//volume draw; an explicit interface area window replaces it.
+	double area_min = 0;
+	double area_max = 0.5 * volume;
+	if (SET_INTERFACE_AREA)
+	{
+		area_min = interface_area_mean - interface_area_std;
+		area_max = interface_area_mean + interface_area_std;
+	}
+	LAYER_LATTICE_LIST lattice_list;
+	build_layer_lattice_list(&lattice_list, lattice_vector_2d_from_geo, max_ds, max_df,
+				 area_min, area_max, max_interface_atoms, num_substrate_atoms,
+				 total_atoms, MAX_ANGLE, MIN_ANGLE);
+
+	//the lists differ between ranks through the volume draw, so decisions
+	//about empty lists use the totals over all ranks
+	int total_combos[NUM_LAYER_LATTICE_TYPES];
+	MPI_Allreduce(lattice_list.num_combos, total_combos, NUM_LAYER_LATTICE_TYPES,
+		      MPI_INT, MPI_SUM, world_comm);
+	int any_combo = 0;
+	for (int type = 0; type < NUM_LAYER_LATTICE_TYPES; type++)
+		any_combo += total_combos[type];
+
+	if (my_rank == 0)
+	{
+		printf("FILM CELL INFO:\n");
+		printf("-----------------------------------------------------\n");
+		printf("Substrate cell area:                          %f A^2 (%d atoms)\n",
+		       lattice_list.substrate_area, num_substrate_atoms);
+		printf("Film cell area window (rank 0):               [%f, %f] A^2 (%s)\n",
+		       area_min, area_max,
+		       SET_INTERFACE_AREA ? "interface area mean +- std" : "default: volume / 2");
+		printf("Substrate cell repeats d_s:                   1 to %d\n", lattice_list.max_ds);
+		printf("Film cell repeats d_f:                        1 to %d\n", lattice_list.max_df);
+		printf("Maximum interface atoms:                      %d\n", max_interface_atoms);
+		printf("Film lattices (rank 0):                       %d\n", lattice_list.num_film_lattices);
+		printf("Film cells by lattice type (rank 0):          oblique %d, rectangular %d, square %d, hexagonal %d\n",
+		       lattice_list.num_combos[LAYER_OBLIQUE], lattice_list.num_combos[LAYER_RECTANGULAR],
+		       lattice_list.num_combos[LAYER_SQUARE], lattice_list.num_combos[LAYER_HEXAGONAL]);
+		printf("-----------------------------------------------------\n\n");
+	}
+
+	if (!any_combo)
+	{
+		if (my_rank == 0)
+		{
+			printf("***ERROR: no film cell fits the area window and bounds on any rank. "
+			       "Check interface_area_mean/std, max_ds, max_df and max_interface_atoms.\n");
+			fclose(out_file);
+		}
+		free_layer_lattice_list(&lattice_list);
+		return;
+	}
 
 
 
@@ -654,6 +707,15 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 		//spg_index = 44;
 		spg = compatible_spg[spg_index].spg; //pick a spg
 
+		//skip a layer group whose lattice type has no film cell on any rank
+		if (!total_combos[layer_lattice_type(spg)])
+		{
+			if (my_rank == 0)
+				printf("#No film cell of the lattice type of layer group %d. Skipping.\n\n", spg);
+			spg_index++;
+			continue;
+		}
+
 		//time information
 		time_t start_time = time(NULL);
 		//fail_count = 0;
@@ -698,13 +760,8 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 									 compatible_spg,
 									 num_compatible_spg,
 									 spg_index,
-									 lattice_vector_2d_from_geo,
-									 all_substrate_combo,
-									 num_combo,
-									 interface_area_mean,
-									 interface_area_std,
-									 volume_multiplier,
-									 SET_INTERFACE_AREA);
+									 &lattice_list,
+									 volume_multiplier);
 
 					//printf("I am after generate_crystal\n");
 
@@ -877,7 +934,7 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 		printf("Generation completed.\nHave a nice day!!\n");
 	}
 
-	free(all_substrate_combo);
+	free_layer_lattice_list(&lattice_list);
 
 }
 
@@ -904,6 +961,7 @@ void send_xtal(MPI_Comm comm, int destination, crystal* xtal, int total_atoms)
     MPI_Send(xtal->com_positions, 3, MPI_FLOAT , destination, 11, comm);
     MPI_Send(xtal->euler_angles, 3, MPI_FLOAT , destination, 12, comm);
     MPI_Send(xtal->epitaxy_matrix, 4, MPI_INT , destination, 13, comm);
+    MPI_Send(xtal->film_matrix, 4, MPI_INT , destination, 14, comm);
 }
 
 void receive_xtal(MPI_Comm comm, int source, crystal* xtal, int total_atoms)
@@ -924,6 +982,7 @@ void receive_xtal(MPI_Comm comm, int source, crystal* xtal, int total_atoms)
     MPI_Recv(xtal->com_positions, 3, MPI_FLOAT, source, 11, comm, &status);
     MPI_Recv(xtal->euler_angles, 3, MPI_FLOAT, source, 12, comm, &status);
     MPI_Recv(xtal->epitaxy_matrix, 4, MPI_INT, source, 13, comm, &status);
+    MPI_Recv(xtal->film_matrix, 4, MPI_INT, source, 14, comm, &status);
 
     xtal->lattice_vectors[0][0] = temp[0];
     xtal->lattice_vectors[0][1] = temp[1];

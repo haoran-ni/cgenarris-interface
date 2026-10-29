@@ -146,6 +146,7 @@ void print_layer2file(crystal* xtal, FILE* out_file)
     fprintf(out_file, "# Site symmetry = %s\n", site_symm);
 
     fprintf(out_file, "# Epitaxy matrix = [[%d, %d],[%d, %d]]\n", xtal->epitaxy_matrix[0], xtal->epitaxy_matrix[1], xtal->epitaxy_matrix[2], xtal->epitaxy_matrix[3]);
+    fprintf(out_file, "# Film matrix = [[%d, %d],[%d, %d]]\n", xtal->film_matrix[0], xtal->film_matrix[1], xtal->film_matrix[2], xtal->film_matrix[3]);
 
     for(int i = 0; i < 3; i++)
     {
