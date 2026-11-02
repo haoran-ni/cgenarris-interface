@@ -491,12 +491,13 @@ int build_layer_lattice_list(LAYER_LATTICE_LIST *list, float lattice_vector_2d[2
 			substrate[r][k] = lattice_vector_2d[r][k];
 	double substrate_area = cross_norm_dvec3(substrate[0], substrate[1]);
 
-	//the defaults reproduce the legacy search F = M S with A_f <= area_max
+	//default d_s: the largest whose film cell fits area_max at d_f = max_df.
+	//With both defaults this is the legacy search F = M S with A_f <= area_max.
 	if (max_df <= 0)
 		max_df = 1;
 	if (max_ds <= 0)
 	{
-		max_ds = (int) floor(area_max / substrate_area);
+		max_ds = (int) floor(max_df * area_max / substrate_area);
 		if (max_ds < 1)
 			max_ds = 1;
 	}
