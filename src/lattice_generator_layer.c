@@ -491,10 +491,18 @@ int build_layer_lattice_list(LAYER_LATTICE_LIST *list, float lattice_vector_2d[2
 			substrate[r][k] = lattice_vector_2d[r][k];
 	double substrate_area = cross_norm_dvec3(substrate[0], substrate[1]);
 
+	//default d_f: with d_s given, the largest whose film cell reaches area_min
+	//at d_s = max_ds, otherwise 1.
 	//default d_s: the largest whose film cell fits area_max at d_f = max_df.
-	//With both defaults this is the legacy search F = M S with A_f <= area_max.
+	//With both defaults every film cell is a supercell F = M S.
 	if (max_df <= 0)
+	{
 		max_df = 1;
+		if (max_ds > 0 && area_min > 0)
+			max_df = (int) floor(max_ds * substrate_area / area_min);
+		if (max_df < 1)
+			max_df = 1;
+	}
 	if (max_ds <= 0)
 	{
 		max_ds = (int) floor(max_df * area_max / substrate_area);

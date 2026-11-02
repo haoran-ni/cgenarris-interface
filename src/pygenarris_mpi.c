@@ -456,6 +456,7 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 	int max_df,
 	int max_interface_atoms,
 	int num_substrate_atoms,
+	double footprint_area,
 	MPI_Comm world_comm)
 {
 	float Zp_max=1;
@@ -600,13 +601,15 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 	int total_atoms = mol->num_of_atoms * Z;
 
 	//film cells F with a common cell C = H_s S = H_f F. The area window
-	//applies to F: by default the legacy cap of half this rank's first
-	//volume draw; an explicit interface area window replaces it.
-	double area_min = 0;
+	//applies to F: by default from one molecule's footprint to the legacy cap
+	//of half this rank's first volume draw; an explicit interface area window
+	//replaces it, keeping the footprint if its lower limit is not positive.
+	double area_min = footprint_area;
 	double area_max = 0.5 * volume;
 	if (SET_INTERFACE_AREA)
 	{
-		area_min = interface_area_mean - interface_area_std;
+		if (interface_area_mean - interface_area_std > 0)
+			area_min = interface_area_mean - interface_area_std;
 		area_max = interface_area_mean + interface_area_std;
 	}
 	LAYER_LATTICE_LIST lattice_list;
@@ -631,7 +634,7 @@ void mpi_generate_layer_with_vdw_cutoff_matrix(
 		       lattice_list.substrate_area, num_substrate_atoms);
 		printf("Film cell area window (rank 0):               [%f, %f] A^2 (%s)\n",
 		       area_min, area_max,
-		       SET_INTERFACE_AREA ? "interface area mean +- std" : "default: volume / 2");
+		       SET_INTERFACE_AREA ? "interface area mean +- std" : "default: molecule footprint to volume / 2");
 		printf("Substrate cell repeats d_s:                   1 to %d\n", lattice_list.max_ds);
 		printf("Film cell repeats d_f:                        1 to %d\n", lattice_list.max_df);
 		printf("Maximum interface atoms:                      %d\n", max_interface_atoms);
